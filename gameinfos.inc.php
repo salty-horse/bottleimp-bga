@@ -92,7 +92,7 @@ $gameinfos = [
 'player_colors' => [ "ff0000", "008000", "0000ff", "ffa500", "000000", "ffffff" ],
 
 // Favorite colors support : if set to "true", support attribution of favorite colors based on player's preferences (see reattributeColorsBasedOnPreferences PHP method)
-'favorite_colors_support' => false,
+'favorite_colors_support' => true,
 
 // Game interface width range (pixels)
 // Note: game interface = space on the left side, without the column on the right

@@ -26,11 +26,25 @@
 
 $game_options = [
     100 => [
-        'name' => totranslate('Game length'),
+        'name' => totranslate('Rounds per player'),
         'values' => [
-            300 => ['name' => totranslate('Standard game (300 points)'), 'description' => totranslate('Play to 300 points.')],
-            500 => ['name' => totranslate('Long game (500 points)'), 'description' => totranslate('Play to 500 points.')],
+            2 => ['name' => totranslate('Standard game (2 rounds per player)')],
+            3 => ['name' => totranslate('Long game (3 rounds per player)')],
         ],
-        'default' => 300
+        'default' => 2
+    ],
+    101 => [
+        'name' => totranslate('Number of bottles'),
+        'values' => [
+            1 => ['name' => totranslate('One bottle (Team mode)')],
+            2 => ['name' => totranslate('Two bottles (No teams)')],
+        ],
+        'default' => 1,
+        'displaycondition' => [
+            [
+                'type' => 'minplayers',
+                'value' => 5,
+            ]
+        ],
     ],
 ];

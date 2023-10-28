@@ -18,7 +18,7 @@
 require_once(APP_GAMEMODULE_PATH.'module/table/table.game.php');
 
 
-class The Bottle Imp extends Table {
+class TheBottleImp extends Table {
 
     function __construct() {
 
@@ -37,8 +37,9 @@ class The Bottle Imp extends Table {
             'trumpSuit' => 12,
             'ledSuit' => 13,
             'firstPlayer' => 14,
-            'firstPicker' => 15,
-            'targetPoints' => 100,
+            'roundsPerPlayer' => 100,
+            'numberOfBottles' => 101,
+            // 'teamMode' => 102, # TODO options for team modes when playing with 1 bottle
         ]);
 
         $this->deck = self::getNew('module.common.deck');
@@ -60,28 +61,26 @@ class The Bottle Imp extends Table {
     */
     protected function setupNewGame($players, $options = [])
     {
-        // Set the colors of the players with HTML color code
-        // The default below is red/green/blue/orange/brown
-        // The number of colors defined here must correspond to the maximum number of players allowed for the gams
-        $default_colors = ['ff0000', '008000'];
+		$gameinfos = $this->getGameinfos();
+		if ($gameinfos['favorite_colors_support'])
+	        self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
+        self::reloadPlayersBasicInfos();
 
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
         $sql = 'INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ';
         $values = [];
         foreach ($players as $player_id => $player) {
-            $color = array_shift($default_colors);
+            $color = array_shift($gameinfos['player_colors']);
             $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes($player['player_name'])."','".addslashes($player['player_avatar'])."')";
 
-            // Player statistics
-            $this->initStat('player', 'won_tricks', 0, $player_id);
-            $this->initStat('player', 'average_points_per_trick', 0, $player_id);
-            $this->initStat('player', 'number_of_trumps_played', 0, $player_id);
+            // Player statistics - TODO
+            // $this->initStat('player', 'won_tricks', 0, $player_id);
+            // $this->initStat('player', 'average_points_per_trick', 0, $player_id);
+            // $this->initStat('player', 'number_of_trumps_played', 0, $player_id);
         }
         $sql .= implode($values, ',');
         self::DbQuery($sql);
-        self::reattributeColorsBasedOnPreferences($players, ['ff0000', '008000']);
-        self::reloadPlayersBasicInfos();
 
         /************ Start the game initialization *****/
 
@@ -96,11 +95,11 @@ class The Bottle Imp extends Table {
 
         // Create cards
         $cards = [];
-        for ($suit_id = 1; $suit_id <= 4; $suit_id++) {
-            for ($value = 1; $value <= 9; $value++) {
-                $cards[] = ['type' => $suit_id, 'type_arg' => $value, 'nbr' => 1];
-            }
-        }
+		foreach ($this->cards as $cardinfo) {
+			if (count($players) <= 4 && !is_int($cardinfo['rank']))
+				continue;
+			$cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'], 'nbr' => 1];
+		}
 
         $this->deck->createCards($cards, 'deck');
 
@@ -175,6 +174,7 @@ class The Bottle Imp extends Table {
         (see states.inc.php)
     */
     function getGameProgression() {
+		// TODO
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
@@ -186,113 +186,25 @@ class The Bottle Imp extends Table {
     //////////////////////////////////////////////////////////////////////////////
     //////////// Utilities
     ////////////
-    // TODO: Use single sql query
-    function getPlayerStrawmen($player_id) {
-        $visible_strawmen = [];
-        $hidden_strawmen = [];
-        $used_pile = self::getUniqueValueFromDB(
-            "SELECT player_used_strawman FROM player WHERE player_id = ${player_id} AND player_used_strawman > 0");
-
-        for ($i = 1; $i <= 5; $i++) {
-            $straw_cards = array_values($this->deck->getCardsInLocation("straw_{$player_id}_{$i}"));
-            if (count($straw_cards) >= 1) {
-                if ($i != $used_pile) {
-                    array_push($visible_strawmen, $this->getTopStraw($straw_cards));
-                    array_push($hidden_strawmen, count($straw_cards) == 2);
-                } else {
-                    array_push($visible_strawmen, null);
-                    array_push($hidden_strawmen, true);
-                }
-            } else {
-                array_push($visible_strawmen, null);
-                array_push($hidden_strawmen, false);
-            }
-        }
-
-        return [
-            'visible' => $visible_strawmen,
-            'more' => $hidden_strawmen,
-        ];
-    }
-
-    // Returns the strawman with highest location_arg
-    function getTopStraw($strawmen_list) {
-        return array_reduce($strawmen_list, function($max, $item) {
-            if (is_null($max)) {
-                return $item;
-            } else if ($item['location_arg'] > $max['location_arg']) {
-                return $item;
-            } else {
-                return $max;
-            }
-        });
-    }
-
-
-    // Returns all cards for a player, in hand or in strawman piles
-    function getAllPlayerCards($player_id) {
-        return self::getCollectionFromDB(
-            "select card_id id, card_type type, card_type_arg type_arg from card " .
-            "where (card_location = 'hand' and card_location_arg = '$player_id') or " .
-            "card_location like 'straw_${player_id}_%'");
-    }
-
-    function getCardStrength($card, $trump_suit, $led_suit) {
-        $value = 10 - $card['type_arg'];
-        if ($card['type'] == $trump_suit) {
-            $value += 100;
-        }
-        if ($card['type'] == $led_suit) {
-            $value += 50;
-        }
-        return $value;
-    }
-
-    function getCardStrengthStatistic($card, $trump_suit, $trump_rank) {
-        if ($card['type_arg'] == $trump_rank) {
-            return 100;
-        }
-        $value = 10 - $card['type_arg'];
-        if ($card['type'] == $trump_suit) {
-            return $value * 10;
-        }
-        return $value;
-    }
 
     function getPlayableCards($player_id) {
         // Collect all cards in hand and visible strawmen
         $available_cards = $this->deck->getPlayerHand($player_id);
-        $strawmen = $this->getPlayerStrawmen($player_id);
-        foreach ($strawmen['visible'] as $straw_card) {
-            if ($straw_card) {
-                $available_cards[$straw_card['id']] = $straw_card;
-            }
-        }
-
         $led_suit = self::getGameStateValue('ledSuit');
         if ($led_suit == 0) {
             return $available_cards;
         }
 
-        // If this is a followed card, make sure it's in the led suit or a trump suit/rank.
-        // If not, make sure the player has no cards of the led suit.
-        $trump_rank = $this->getGameStateValue('trumpRank');
-        $trump_suit = $this->getGameStateValue('trumpSuit');
-
         $cards_of_led_suit = [];
-        $cards_of_led_suit_and_trumps = [];
 
         foreach ($available_cards as $available_card_id => $card) {
             if ($card['type'] == $led_suit) {
                 $cards_of_led_suit[$card['id']] = $card;
-                $cards_of_led_suit_and_trumps[$card['id']] = $card;
-            } else if ($card['type'] == $trump_suit || $card['type_arg'] == $trump_rank) {
-                $cards_of_led_suit_and_trumps[$card['id']] = $card;
             }
         }
 
         if ($cards_of_led_suit) {
-            return $cards_of_led_suit_and_trumps;
+            return $cards_of_led_suit;
         } else {
             return $available_cards;
         }
@@ -303,9 +215,7 @@ class The Bottle Imp extends Table {
     function getAutoplayCard($player_id) {
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (count($cards_in_hand) == 1) {
-            $visible_strawmen = array_filter($this->getPlayerStrawmen($player_id)['visible'], fn($x) => !is_null($x));
-            if (!$visible_strawmen)
-                return array_values($cards_in_hand)[0]['id'];
+			return array_values($cards_in_hand)[0]['id'];
         } else if (!$cards_in_hand) {
             $playable_cards = $this->getPlayableCards($player_id);
             if (count($playable_cards) == 1) {
@@ -316,30 +226,7 @@ class The Bottle Imp extends Table {
         return null;
     }
 
-    function getScorePiles() {
-        $players = self::loadPlayersBasicInfos();
-        $result = [];
-        $pile_size_by_player = [];
-        foreach ($players as $player_id => $player) {
-            $result[$player_id] = ['points' => 0];
-            $pile_size_by_player[$player_id] = 0;
-        }
-
-        $cards = $this->deck->getCardsInLocation('scorepile');
-        foreach ($cards as $card) {
-            $player_id = $card['location_arg'];
-            $result[$player_id]['points'] += $card['type_arg'];
-            $pile_size_by_player[$player_id] += 1;
-        }
-
-        foreach ($players as $player_id => $player) {
-            $result[$player_id]['won_tricks'] = $pile_size_by_player[$player_id] / 2;
-        }
-
-        return $result;
-    }
-
-    const SUIT_SYMBOLS = ['♠', '♥', '♣', '♦'];
+    const SUIT_SYMBOLS = ['♠', '♥', '♣'];
     function getSuitLogName($suit_id) {
         return self::SUIT_SYMBOLS[$suit_id - 1];
     }
@@ -351,54 +238,12 @@ class The Bottle Imp extends Table {
      * Each time a player is doing some game action, one of the methods below is called.
      * (note: each method below must match an input method in template.action.php)
      */
-    function selectTrump($trump_type, $trump_id) {
-        $player_id = self::getActivePlayerId();
-        $this->selectTrumpForPlayer($trump_type, $trump_id, $player_id);
-    }
-
-    function selectTrumpForPlayer($trump_type, $trump_id, $player_id) {
-        self::checkAction('selectTrump');
-        $trump_rank = $this->getGameStateValue('trumpRank');
-        $trump_suit = $this->getGameStateValue('trumpSuit');
-
-        // Make sure this trump type is not already set
-        if ($trump_rank && $trump_type == 'rank' || $trump_suit && $trump_type == 'suit') {
-            throw new BgaUserException(self::_('You cannot choose this trump type'));
-        }
-
-        $players = self::loadPlayersBasicInfos();
-        if ($trump_type == 'rank') {
-            $trump_rank = $trump_id;
-            self::setGameStateValue('trumpRank', $trump_id);
-            self::notifyAllPlayers('selectTrumpRank', clienttranslate('${player_name} selects ${rank} as the trump rank'), [
-                'player_id' => $player_id,
-                'player_name' => $players[$player_id]['player_name'],
-                'rank' => $this->values_label[$trump_id],
-            ]);
-        } else {
-            $trump_suit = $trump_id;
-            self::setGameStateValue('trumpSuit', $trump_id);
-            self::notifyAllPlayers('selectTrumpSuit', clienttranslate('${player_name} selects ${suit} as the trump suit'), [
-                'player_id' => $player_id,
-                'player_name' => $players[$player_id]['player_name'],
-                'suit' => $this->getSuitLogName($trump_id),
-                'suit_id' => $trump_id,
-            ]);
-        }
-
-        if ($trump_rank && $trump_suit) {
-            $this->gamestate->nextState('giftCard');
-        } else {
-            $this->gamestate->nextState('selectOtherTrump');
-        }
-    }
-
-    function giftCard($card_id) {
+    function passCards($card_id) {
         $player_id = self::getCurrentPlayerId();
-        $this->giftCardFromPlayer($card_id, $player_id);
+        $this->passCardsFromPlayer($card_id, $player_id);
     }
 
-    function giftCardFromPlayer($card_id, $player_id) {
+    function passCardsFromPlayer($card_id, $player_id) {
         self::checkAction('giftCard');
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (!in_array($card_id, array_keys($cards_in_hand))) {
