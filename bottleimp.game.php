@@ -61,9 +61,9 @@ class TheBottleImp extends Table {
     */
     protected function setupNewGame($players, $options = [])
     {
-		$gameinfos = $this->getGameinfos();
-		if ($gameinfos['favorite_colors_support'])
-	        self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
+        $gameinfos = $this->getGameinfos();
+        if ($gameinfos['favorite_colors_support'])
+            self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
         // Create players
@@ -95,11 +95,11 @@ class TheBottleImp extends Table {
 
         // Create cards
         $cards = [];
-		foreach ($this->cards as $cardinfo) {
-			if (count($players) <= 4 && !is_int($cardinfo['rank']))
-				continue;
-			$cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'], 'nbr' => 1];
-		}
+        foreach ($this->cards as $cardinfo) {
+            if (count($players) <= 4 && !is_int($cardinfo['rank']))
+                continue;
+            $cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'], 'nbr' => 1];
+        }
 
         $this->deck->createCards($cards, 'deck');
 
@@ -174,7 +174,7 @@ class TheBottleImp extends Table {
         (see states.inc.php)
     */
     function getGameProgression() {
-		// TODO
+        // TODO
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
@@ -215,7 +215,7 @@ class TheBottleImp extends Table {
     function getAutoplayCard($player_id) {
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (count($cards_in_hand) == 1) {
-			return array_values($cards_in_hand)[0]['id'];
+            return array_values($cards_in_hand)[0]['id'];
         } else if (!$cards_in_hand) {
             $playable_cards = $this->getPlayableCards($player_id);
             if (count($playable_cards) == 1) {
@@ -238,20 +238,42 @@ class TheBottleImp extends Table {
      * Each time a player is doing some game action, one of the methods below is called.
      * (note: each method below must match an input method in template.action.php)
      */
-    function passCards($card_id) {
+    function passCards($left, $right, $center, $center2) {
         $player_id = self::getCurrentPlayerId();
         $this->passCardsFromPlayer($card_id, $player_id);
     }
 
-    function passCardsFromPlayer($card_id, $player_id) {
-        self::checkAction('giftCard');
+    function passCardsFromPlayer($left, $right, $center, $center2, $player_id) {
+        self::checkAction('passCards');
+
+        if ($center2 && count($players) != 2)
+            throw new BgaUserException(self::_('You must pass 3 cards'));
+
+        $passed_cards = [$left, $right, $center];
+        if ($center2) {
+            $passed_cards[] = [$center2];
+        }
+
+        if (count(array_unique($passed_cards)) != count($passed_cards))
+            throw new BgaUserException(self::_('You must unique cards'));
+
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
-        if (!in_array($card_id, array_keys($cards_in_hand))) {
+        if (!in_array($left, array_keys($cards_in_hand)) ||
+            !in_array($right, array_keys($cards_in_hand)) ||
+            !in_array($center, array_keys($cards_in_hand)) ||
+            ($center2 && !in_array($center2, array_keys($cards_in_hand)))) {
             throw new BgaUserException(self::_('You do not have this card'));
         }
-        $this->deck->moveCard($card_id, 'gift', self::getPlayerAfter($player_id));
-        self::notifyPlayer($player_id, 'giftCardPrivate', '', ['card' => $card_id]);
-        self::notifyAllPlayers('giftCard', clienttranslate('${player_name} selected a card to gift'), [
+
+        $this->deck->moveCard($left, 'hand', self::getPlayerAfter($player_id));
+        $this->deck->moveCard($right, 'hand', self::getPlayerBefore($player_id));
+        $this->deck->moveCard($center, 'center');
+        if ($center2) {
+            $this->deck->moveCard($center2, 'center');
+        }
+
+        self::notifyPlayer($player_id, 'passCardsPrivate', '', ['cards' => $passed_cards]);
+        self::notifyAllPlayers('passCards', clienttranslate('${player_name} selected cards to pass'), [
             'player_id' => $player_id,
             'player_name' => self::getPlayerNameById($player_id) ]);
         $this->gamestate->setPlayerNonMultiactive($player_id, '');
@@ -278,12 +300,6 @@ class TheBottleImp extends Table {
 
         if (!array_key_exists($card_id, $playable_cards)) {
             throw new BgaUserException(self::_('You cannot play this card'));
-        }
-
-        // Remember if the played card is a strawman
-        if (substr($current_card['location'], 0, 5) == 'straw') {
-            $pile = substr($current_card['location'], -1);
-            self::DbQuery("UPDATE player SET player_used_strawman = $pile WHERE player_id='$player_id'");
         }
 
         $this->deck->moveCard($card_id, 'cardsontable', $player_id);
