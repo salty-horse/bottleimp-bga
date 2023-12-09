@@ -54,11 +54,12 @@ if (!defined('STATE_END_GAME')) {
 
 define('STATE_NEW_HAND', 2);
 define('STATE_PASS_CARDS', 3);
-define('STATE_NEW_TRICK', 4);
-define('STATE_PLAYER_TURN_TRY_AUTOPLAY', 5);
-define('STATE_PLAYER_TURN', 6);
-define('STATE_NEXT_PLAYER', 7);
-define('STATE_END_HAND', 8);
+define('STATE_TAKE_PASSED_CARDS', 4);
+define('STATE_NEW_TRICK', 5);
+define('STATE_PLAYER_TURN_TRY_AUTOPLAY', 6);
+define('STATE_PLAYER_TURN', 7);
+define('STATE_NEXT_PLAYER', 8);
+define('STATE_END_HAND', 9);
 define('STATE_END_GAME', 99);
 }
 
@@ -90,9 +91,18 @@ $machinestates = [
         'type' => 'activeplayer',
         'possibleactions' => ['passCards'],
         'transitions' => [
-            '' => STATE_NEW_TRICK,
+            '' => STATE_TAKE_PASSED_CARDS,
         ]
     ],
+
+    STATE_TAKE_PASSED_CARDS => [
+        'name' => 'takePassedCards',
+        'description' => '',
+        'type' => 'game',
+        'action' => 'stTakePassedCards',
+        'transitions' => ['' => STATE_NEW_TRICK]
+    ],
+
 
     STATE_NEW_TRICK => [
         'name' => 'newTrick',

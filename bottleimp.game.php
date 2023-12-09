@@ -265,8 +265,8 @@ class TheBottleImp extends Table {
             throw new BgaUserException(self::_('You do not have this card'));
         }
 
-        $this->deck->moveCard($left, 'hand', self::getPlayerAfter($player_id));
-        $this->deck->moveCard($right, 'hand', self::getPlayerBefore($player_id));
+        $this->deck->moveCard($left, 'pass', self::getPlayerAfter($player_id));
+        $this->deck->moveCard($right, 'pass', self::getPlayerBefore($player_id));
         $this->deck->moveCard($center, 'center');
         if ($center2) {
             $this->deck->moveCard($center2, 'center');
@@ -400,37 +400,16 @@ class TheBottleImp extends Table {
         $this->gamestate->nextState();
     }
 
-    function stFirstTrick() {
-        $this->gamestate->changeActivePlayer($this->getGameStateValue('firstPlayer'));
-
-        // Update hand statistics
-        $trump_suit = $this->getGameStateValue('trumpSuit');
-        $trump_rank = $this->getGameStateValue('trumpRank');
+    function stTakePassedCards() {
         $players = self::loadPlayersBasicInfos();
         foreach ($players as $player_id => $player) {
-            // Count all player cards that match the trump suit or trump rank
-            $trump_count = self::getUniqueValueFromDB(
-                "select count(*) from card " .
-                "where (card_type = '$trump_suit' or card_type_arg = $trump_rank) and " .
-                "((card_location = 'hand' and card_location_arg = '$player_id') or " .
-                "card_location like 'straw_${player_id}_%')");
+            $cards = $this->cards->getCardsInLocation('pass', $player_id );
+            $this->cards->moveAllCardsInLocation('pass', 'hand', $player_id, $player_id);
 
-            // Calculate hand strength
-            $cards_of_player = $this->getAllPlayerCards($player_id);
-            $strength = 0;
-            foreach ($cards_of_player as $card) {
-                $strength += $this->getCardStrengthStatistic($card, $trump_suit, $trump_rank);
-            }
-
-            self::DbQuery(
-                "UPDATE player " .
-                "SET player_number_of_trumps_played = player_number_of_trumps_played + $trump_count ," .
-                "player_number_of_trumps_played_round = $trump_count ," .
-                "player_hand_strength = player_hand_strength + $strength ," .
-                "player_hand_strength_round = $strength " .
-                "WHERE player_id = $player_id");
+            self::notifyPlayer($player_id, 'takePassedCards', '', [
+                'cards' => $cards
+            ]);
         }
-
 
         $this->gamestate->nextState();
     }
@@ -686,7 +665,7 @@ class TheBottleImp extends Table {
         }
 
         // Alternate first player
-        self::setGameStateValue('firstPlayer', 
+        self::setGameStateValue('firstPlayer',
             self::getPlayerAfter(self::getGameStateValue('firstPlayer')));
 
         // Choose new first picker
