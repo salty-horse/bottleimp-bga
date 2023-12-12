@@ -187,8 +187,16 @@ class TheBottleImp extends Table {
     //////////// Utilities
     ////////////
 
+    function getBottlePriceAndOwner() {
+        return self::getObjectFromDb(
+            'SELECT id, owner, price FROM bottles ' .
+            'WHERE price = (select max(price) from bottles) ' .
+            'ORDER BY id LIMIT 1');
+    }
+
     function getPlayableCards($player_id) {
-        // Collect all cards in hand and visible strawmen
+        // TODO: Modify for 2 players
+        // Collect all cards in hand
         $available_cards = $this->deck->getPlayerHand($player_id);
         $led_suit = self::getGameStateValue('ledSuit');
         if ($led_suit == 0) {
@@ -213,6 +221,7 @@ class TheBottleImp extends Table {
     // A card can be autoplayed if it's the only one left, or if the hand is empty
     // and there's only one legal strawman
     function getAutoplayCard($player_id) {
+        // TODO: Modify for 2 players
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (count($cards_in_hand) == 1) {
             return array_values($cards_in_hand)[0]['id'];
@@ -323,22 +332,6 @@ class TheBottleImp extends Table {
     * These methods function is to return some additional information that is specific to the current
     * game state.
     */
-    function argSelectTrump() {
-        $trump_suit = $this->getGameStateValue('trumpSuit');
-        $trump_rank = $this->getGameStateValue('trumpRank');
-        if (!$trump_suit && !$trump_rank) {
-            $rank_or_suit = clienttranslate('rank or suit');
-        } else if (!$trump_rank) {
-            $rank_or_suit = clienttranslate('rank');
-        } else {
-            $rank_or_suit = clienttranslate('suit');
-        }
-        return [
-            'i18n' => ['rank_or_suit'],
-            'rank_or_suit' => $rank_or_suit,
-        ];
-    }
-
     function argPlayCard() {
         $playable_cards = $this->getPlayableCards(self::getActivePlayerId());
         return [
@@ -366,27 +359,25 @@ class TheBottleImp extends Table {
         $this->deck->moveAllCardsInLocation(null, 'deck');
         $this->deck->shuffle('deck');
 
+        // TODO: Modify for 2 players
         // Deal cards
         $players = self::loadPlayersBasicInfos();
-        $public_strawmen = [];
+        $player_count = count($players);
+        if ($player_count == 2) {
+            $hand_size = 12;
+        } else if ($player_count == 3 || $player_count == 4) {
+            $hand_size = 36 / $player_count;
+        } else {
+            $hand_size = 54 / $player_count;
+        }
         foreach ($players as $player_id => $player) {
-            $hand_cards = $this->deck->pickCards(8, 'deck', $player_id);
-            $player_strawmen = [];
-            for ($i = 1; $i <= 5; $i++) {
-                $location = "straw_{$player_id}_${i}";
-                $this->deck->pickCardForLocation('deck', $location, 0);
-                $straw = $this->deck->pickCardForLocation('deck', $location, 1);
-                array_push($player_strawmen, $straw);
-            }
-            $public_strawmen[$player_id] = $player_strawmen;
-
+            $hand_cards = $this->deck->pickCards($hand_size, 'deck', $player_id);
             self::notifyPlayer($player_id, 'newHand', '', ['hand_cards' => $hand_cards]);
         }
 
         // Notify both players about the public strawmen, first player, and first picker
         self::notifyAllPlayers('newHandPublic', '', [
-            'strawmen' => $public_strawmen,
-            'hand_size' => 8,
+            'hand_size' => $hand_size,
         ]);
 
         self::giveExtraTime(self::getActivePlayerId());
@@ -421,7 +412,7 @@ class TheBottleImp extends Table {
 
     function stNextPlayer() {
         // Move to next player
-        if ($this->deck->countCardInLocation('cardsontable') != 2) {
+        if ($this->deck->countCardInLocation('cardsontable') != $this->getPlayersNumber()) {
             $player_id = self::activeNextPlayer();
             self::giveExtraTime($player_id);
             $this->gamestate->nextState('nextPlayer');
@@ -429,34 +420,29 @@ class TheBottleImp extends Table {
         }
 
         // Resolve the trick
+        $bottle_info = $this->getBottlePriceAndOwner();
         $cards_on_table = array_values($this->deck->getCardsInLocation('cardsontable'));
         $winning_player = null;
-        $led_suit = self::getGameStateValue('ledSuit');
-        $trump_rank = $this->getGameStateValue('trumpRank');
-        $trump_suit = $this->getGameStateValue('trumpSuit');
 
-        // Trump rank is involved
-        if ($cards_on_table[0]['type_arg'] == $trump_rank || $cards_on_table[1]['type_arg'] == $trump_rank) {
-            // If both cards are trump rank, last played card wins.
-            if ($cards_on_table[0]['type_arg'] == $trump_rank && $cards_on_table[1]['type_arg'] == $trump_rank) {
-                $winning_player = $this->getActivePlayerId();
+        $max_card = null;
+        $max_card_below_price = null;
+        $points = 0;
 
-            // Single trump rank wins.
-            } else if ($cards_on_table[0]['type_arg'] == $trump_rank) {
-                $winning_player = $cards_on_table[0]['location_arg'];
-            } else {
-                $winning_player = $cards_on_table[1]['location_arg'];
+        foreach ($cards_on_table as $card) {
+            if ($card['type_arg'] < $bottle_info['price']) {
+                if (!$max_card_below_price || $card['type_arg'] >= $max_card_below_price['type_arg']) {
+                    $max_card_below_price = $card;
+                }
+            } else if (!$max_card_below_price) {
+                if (!$max_card || $card['type_arg'] >= $max_card['type_arg']) {
+                    $max_card = $card;
+                }
             }
-        } else {
-            // Lowest value wins
-            $card_0_strength = $this->getCardStrength($cards_on_table[0], $trump_suit, $led_suit);
-            $card_1_strength = $this->getCardStrength($cards_on_table[1], $trump_suit, $led_suit);
-            if ($card_0_strength > $card_1_strength) {
-                $winning_player = $cards_on_table[0]['location_arg'];
-            } else {
-                $winning_player = $cards_on_table[1]['location_arg'];
-            }
+            $points += floatval($card['type_arg']);
         }
+
+        $winning_card = $max_card_below_price ? $max_card_below_price : $max_card;
+        $winning_player = $winning_card['location_arg'];
 
         $this->gamestate->changeActivePlayer($winning_player);
 
@@ -466,7 +452,6 @@ class TheBottleImp extends Table {
         // Note: we use 2 notifications to pause the display during the first notification
         // before cards are collected by the winner
         $players = self::loadPlayersBasicInfos();
-        $points = $cards_on_table[0]['type_arg'] + $cards_on_table[1]['type_arg'];
         self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick and ${points} points'), [
             'player_id' => $winning_player,
             'player_name' => $players[$winning_player]['player_name'],
@@ -477,7 +462,15 @@ class TheBottleImp extends Table {
             'points' => $points,
         ]);
 
-        $this->gamestate->nextState('revealStrawmen');
+        // TODO: Modify for 2 players
+        $remaining_card_count = self::getUniqueValueFromDB('select count(*) from card where card_location = "hand"');
+        if ($remaining_card_count == 0) {
+            // End of the hand
+            $this->gamestate->nextState('endHand');
+        } else {
+            // End of the trick
+            $this->gamestate->nextState('nextTrick');
+        }
     }
 
     function stPlayerTurnTryAutoplay() {
@@ -488,40 +481,6 @@ class TheBottleImp extends Table {
             $this->gamestate->nextState('nextPlayer');
         } else {
             $this->gamestate->nextState('playerTurn');
-        }
-    }
-
-    function stRevealStrawmen() {
-        // Check which piles are revealed and notify players
-        $player_strawman_use = self::getCollectionFromDb(
-            'SELECT player_id, player_used_strawman FROM player WHERE player_used_strawman > 0', true);
-
-        if ($player_strawman_use) {
-            $revealed_cards_by_player = [];
-            foreach ($player_strawman_use as $player_id => $pile) {
-                $remaining_cards_in_pile = $this->deck->getCardsInLocation("straw_{$player_id}_{$pile}", null, 'location_arg');
-                if ($remaining_cards_in_pile) {
-                    $revealed_cards_by_player[$player_id] = [
-                        'pile' => $pile,
-                        'card' => array_shift($remaining_cards_in_pile),
-                    ];
-                }
-            }
-
-            self::notifyAllPlayers('revealStrawmen', '', [
-                'revealed_cards' => $revealed_cards_by_player,
-            ]);
-
-            self::DbQuery('UPDATE player SET player_used_strawman = 0');
-        }
-
-        $remaining_card_count = self::getUniqueValueFromDB('select count(*) from card where card_location = "hand" or card_location like "straw%"');
-        if ($remaining_card_count == 0) {
-            // End of the hand
-            $this->gamestate->nextState('endHand');
-        } else {
-            // End of the trick
-            $this->gamestate->nextState('nextTrick');
         }
     }
 
