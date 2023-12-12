@@ -103,6 +103,8 @@ class TheBottleImp extends Table {
 
         $this->deck->createCards($cards, 'deck');
 
+        // TODO: Init bottles
+
         // Activate first player (which is in general a good idea :))
         $this->activeNextPlayer();
 
@@ -141,9 +143,6 @@ class TheBottleImp extends Table {
 
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
         $result['firstPlayer'] = $this->getGameStateValue('firstPlayer');
-        $result['firstPicker'] = $this->getGameStateValue('firstPicker');
-        $result['trumpRank'] = $this->getGameStateValue('trumpRank');
-        $result['trumpSuit'] = $this->getGameStateValue('trumpSuit');
 
         $score_piles = $this->getScorePiles();
 
@@ -441,7 +440,13 @@ class TheBottleImp extends Table {
             $points += floatval($card['type_arg']);
         }
 
-        $winning_card = $max_card_below_price ? $max_card_below_price : $max_card;
+        if ($max_card_below_price) {
+            $winning_card = $max_card_below_price;
+            $bottle_id = $bottle_info['id'];
+        } else {
+            $winning_card = $max_card;
+            $bottle_id = 0;
+        }
         $winning_player = $winning_card['location_arg'];
 
         $this->gamestate->changeActivePlayer($winning_player);
@@ -452,10 +457,24 @@ class TheBottleImp extends Table {
         // Note: we use 2 notifications to pause the display during the first notification
         // before cards are collected by the winner
         $players = self::loadPlayersBasicInfos();
-        self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick and ${points} points'), [
+        if ($max_card_below_price) {
+            if ($bottle_info['owner'] == $winning_player) {
+                $win_message = clienttranslate('${player_name} wins the trick worth ${points} points, and keeps the bottle');
+            } else {
+                if ($this->getGameStateValue('numberOfBottles') == 2) {
+                    $win_message = clienttranslate('${player_name} wins the trick worth ${points} points, and takes a bottle');
+                } else {
+                    $win_message = clienttranslate('${player_name} wins the trick worth ${points} points, and takes the bottle');
+                }
+            }
+        } else {
+            $win_message = clienttranslate('${player_name} wins the trick worth ${points} points');
+        }
+        self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick worth ${points} points'), [
             'player_id' => $winning_player,
             'player_name' => $players[$winning_player]['player_name'],
             'points' => $points,
+            'bottle_id' => $bottle_id,
         ]);
         self::notifyAllPlayers('giveAllCardsToPlayer','', [
             'player_id' => $winning_player,
