@@ -110,7 +110,6 @@ class TheBottleImp extends Table {
 
         $player_id = self::getActivePlayerId();
         self::setGameStateInitialValue('firstPlayer', $player_id);
-        self::setGameStateInitialValue('firstPicker', $player_id);
 
         /************ End of the game initialization *****/
     }
@@ -142,6 +141,7 @@ class TheBottleImp extends Table {
         $result['cardsontable'] = $this->deck->getCardsInLocation('cardsontable');
 
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
+        $result['totalRounds'] = count($result['players']) * $this->getGameStateValue('roundsPerPlayer');
         $result['firstPlayer'] = $this->getGameStateValue('firstPlayer');
 
         $score_piles = $this->getScorePiles();
@@ -177,9 +177,6 @@ class TheBottleImp extends Table {
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
-        $target_points = $this->getGameStateValue('targetPoints');
-        $max_score = intval(self::getUniqueValueFromDB('SELECT MAX(player_score) FROM player'));
-        return min(100, floor($max_score / $target_points * 100));
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -234,9 +231,32 @@ class TheBottleImp extends Table {
         return null;
     }
 
+    function getScorePiles() {
+        $players = self::loadPlayersBasicInfos();
+        $result = [];
+        $pile_size_by_player = [];
+        foreach ($players as $player_id => $player) {
+            $result[$player_id] = ['points' => 0];
+            $pile_size_by_player[$player_id] = 0;
+        }
+
+        $cards = $this->deck->getCardsInLocation('scorepile');
+        foreach ($cards as $card) {
+            $player_id = $card['location_arg'];
+            $result[$player_id]['points'] += $this->$cards[$card['type_arg']]['points'];
+            $pile_size_by_player[$player_id] += 1;
+        }
+
+        foreach ($players as $player_id => $player) {
+            $result[$player_id]['won_tricks'] = $pile_size_by_player[$player_id] / 2;
+        }
+
+        return $result;
+    }
+
     const SUIT_SYMBOLS = ['♠', '♥', '♣'];
-    function getSuitLogName($suit_id) {
-        return self::SUIT_SYMBOLS[$suit_id - 1];
+    function getSuitLogName($card) {
+        return self::SUIT_SYMBOLS[$this->cards[$card['type_arg']]['suit'] - 1];
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -319,7 +339,7 @@ class TheBottleImp extends Table {
             'player_name' => self::getActivePlayerName(),
             'value' => $current_card['type_arg'],
             'suit_id' => $current_card['type'],
-            'suit' => $this->getSuitLogName($current_card['type']),
+            'suit' => $this->getSuitLogName($current_card),
         ]);
     }
 
@@ -437,7 +457,7 @@ class TheBottleImp extends Table {
                     $max_card = $card;
                 }
             }
-            $points += floatval($card['type_arg']);
+            $points += $this->cards[$card['type_arg']]['points'];
         }
 
         if ($max_card_below_price) {
@@ -451,11 +471,16 @@ class TheBottleImp extends Table {
 
         $this->gamestate->changeActivePlayer($winning_player);
 
-        // Move all cards to the winner's scorepile
+        // Move all cards to the winner's score pile
         $this->deck->moveAllCardsInLocation('cardsontable', 'scorepile', null, $winning_player);
 
-        // Note: we use 2 notifications to pause the display during the first notification
-        // before cards are collected by the winner
+        // Update bottle
+        $new_price = 0;
+        if ($bottle_id) {
+            $new_price = floatval($card['type_arg']);
+            self::DbQuery("UPDATE bottles SET owner='$winning_player', price=$new_price WHERE id=$bottle_id");
+        }
+
         $players = self::loadPlayersBasicInfos();
         if ($max_card_below_price) {
             if ($bottle_info['owner'] == $winning_player) {
@@ -470,11 +495,15 @@ class TheBottleImp extends Table {
         } else {
             $win_message = clienttranslate('${player_name} wins the trick worth ${points} points');
         }
+
+        // Note: we use 2 notifications to pause the display during the first notification
+        // before cards are collected by the winner
         self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick worth ${points} points'), [
             'player_id' => $winning_player,
             'player_name' => $players[$winning_player]['player_name'],
             'points' => $points,
             'bottle_id' => $bottle_id,
+            'price' => $new_price,
         ]);
         self::notifyAllPlayers('giveAllCardsToPlayer','', [
             'player_id' => $winning_player,
@@ -504,35 +533,60 @@ class TheBottleImp extends Table {
     }
 
     function stEndHand() {
+        // Reveal devil's trick
+        // TODO: Sort cards for display?
+        $center_cards = $this->deck->getCardsInLocation('center');
+        $devil_points = 0;
+        $devil_cards_display = [];
+        foreach ($center_cards as $card) {
+            $devil_points = $this->$cards[$card['type_arg']]['points'];
+            $suit_display = $this->getSuitLogName($card);
+            $devil_cards_display[] = "{$card['type_arg']}$suit_display";
+        }
+        $devil_cards = join(", ", $devil_cards_display);
+
+
+        self::notifyAllPlayers('revealDevilsTrick', clienttranslate('Devil\'s trick had ${devil_cards}, worth ${points} points'), [
+            'devil_cards' => $devil_cards,
+            'points' => $devil_points,
+        ]);
+
         // Count and score points, then end the game or go to the next hand.
         $players = self::loadPlayersBasicInfos();
 
         $score_piles = $this->getScorePiles();
 
-        $gift_cards_by_player = self::getCollectionFromDB('select card_location_arg id, card_type type, card_type_arg type_arg from card where card_location = "gift"');
+        $bottle_owners = self::getObjectListFromDB('SELECT owner FROM bottles', true);
 
         // Apply scores to player
-        foreach ($score_piles as $player_id => $score_pile) {
-            $gift_card = $gift_cards_by_player[$player_id];
-            $gift_value = $gift_card['type_arg'];
-            $points = $score_pile['points'] + $gift_value;
-            $sql = "UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'";
-            self::DbQuery($sql);
-            self::notifyAllPlayers('endHand', clienttranslate('${player_name} scores ${points} points (was gifted ${gift_value} ${suit})'), [
-                'player_id' => $player_id,
-                'player_name' => $players[$player_id]['player_name'],
-                'points' => $points,
-                'gift_value' => $gift_value,
-                'gift_suit' => $gift_card['type'],
-                'suit' => $this->getSuitLogName($gift_card['type']),
-            ]);
-
-            $this->incStat($score_pile['won_tricks'], 'won_tricks', $player_id);
-
-            // This stores the total score minus gift cards, used for calculating average_points_per_trick
-            self::DbQuery(
-                "UPDATE player SET player_total_score_pile = player_total_score_pile + {$score_pile['points']} " .
-                "WHERE player_id = $player_id");
+        foreach ($players as $player_id => $player) {
+            if (in_array($player_id, $bottle_owners)) {
+                if (count($bottle_owners) == 2 && $bottle_owners[0] == $bottle_owners[1]) {
+                    $points = 2 * $devil_points;
+                    $lose_message = clienttranslate('${player_name} owns both bottles and loses ${points_disp} points');
+                } else {
+                    $points = $devil_points;
+                    if ($this->getGameStateValue('numberOfBottles') == 2) {
+                        $lose_message = clienttranslate('${player_name} owns a bottle and loses ${points_disp} points');
+                    } else {
+                        $lose_message = clienttranslate('${player_name} owns the bottle and loses ${points_disp} points');
+                    }
+                }
+                self::notifyAllPlayers('endHand', $lose_message, [
+                    'player_id' => $player_id,
+                    'player_name' => $players[$player_id]['player_name'],
+                    'points_disp' => $points,
+                    'points' => -$points,
+                ]);
+            } else {
+                $points = $score_piles[$player_id]['points'];
+                self::DbQuery("UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'");
+                self::notifyAllPlayers('endHand', clienttranslate('${player_name} collected ${points} points'), [
+                    'player_id' => $player_id,
+                    'player_name' => $players[$player_id]['player_name'],
+                    'points' => $points,
+                ]);
+            }
         }
 
         $new_scores = self::getCollectionFromDb('SELECT player_id, player_score FROM player', true);
@@ -541,19 +595,9 @@ class TheBottleImp extends Table {
 
         // Check if this is the end of the game
         $end_of_game = false;
-        $target_points = $this->getGameStateValue('targetPoints');
-        if (($flat_scores[0] >= $target_points || $flat_scores[1] >= $target_points) && $flat_scores[0] != $flat_scores[1]) {
+        if ($this->getGameStateValue('roundNumber') == count($players) * $this->getGameStateValue('roundsPerPlayer')) {
             $end_of_game = true;
         }
-
-        $player_stats = self::getCollectionFromDb(
-            'SELECT player_id, ' .
-            'player_total_score_pile points, ' .
-            'player_number_of_trumps_played trumps, ' .
-            'player_number_of_trumps_played_round trumps_round, ' .
-            'player_hand_strength strength, ' .
-            'player_hand_strength_round strength_round ' .
-            'FROM player');
 
         // Display a score table
         $scoreTable = [];
@@ -567,19 +611,6 @@ class TheBottleImp extends Table {
         }
         $scoreTable[] = $row;
 
-        $row = [clienttranslate('Received gift card')];
-        foreach ($players as $player_id => $player) {
-            $gift_card = $gift_cards_by_player[$player_id];
-            $row[] = [
-                'str' => '${gift_value} ${suit}',
-                'args' => [
-                    'gift_value' => $gift_card['type_arg'],
-                    'suit' => $this->getSuitLogName($gift_card['type']),
-                ],
-            ];
-        }
-        $scoreTable[] = $row;
-
         $row = [clienttranslate('Score pile')];
         foreach ($players as $player_id => $player) {
             $row[] = $score_piles[$player_id]['points'];
@@ -589,18 +620,6 @@ class TheBottleImp extends Table {
         $row = [clienttranslate('Round score')];
         foreach ($players as $player_id => $player) {
             $row[] = $score_piles[$player_id]['points'] + $gift_cards_by_player[$player_id]['type_arg'];
-        }
-        $scoreTable[] = $row;
-
-        $row = [clienttranslate('Trumps played')];
-        foreach ($players as $player_id => $player) {
-            $row[] = $player_stats[$player_id]['trumps_round'];
-        }
-        $scoreTable[] = $row;
-
-        $row = [clienttranslate('Hand strength')];
-        foreach ($players as $player_id => $player) {
-            $row[] = $player_stats[$player_id]['strength_round'];
         }
         $scoreTable[] = $row;
 
@@ -625,43 +644,14 @@ class TheBottleImp extends Table {
         ]);
 
         if ($end_of_game) {
-            // Update statistics
-            foreach ($players as $player_id => $player) {
-                $won_tricks = $this->getStat('won_tricks', $player_id);
-                $this->setStat($player_stats[$player_id]['points'] / $won_tricks, 'average_points_per_trick', $player_id);
-                $this->setStat($player_stats[$player_id]['trumps'], 'number_of_trumps_played', $player_id);
-                $this->setStat($player_stats[$player_id]['strength'], 'total_hand_strength', $player_id);
-            }
-
-            $round_number = $this->getGameStateValue('roundNumber');
-            $this->setStat($round_number, $target_points == 300 ?
-                'number_of_rounds_standard_game' :
-                'number_of_rounds_long_game');
-
             $this->gamestate->nextState('endGame');
             return;
         }
 
-        // Alternate first player
-        self::setGameStateValue('firstPlayer',
-            self::getPlayerAfter(self::getGameStateValue('firstPlayer')));
-
-        // Choose new first picker
-        if ($flat_scores[0] == $flat_scores[1]) {
-            // Rare case when players are tied: Alternate first picker
-            $first_picker = self::getPlayerAfter(self::getGameStateValue('firstPicker'));
-        } else {
-            // First picker is the player with the lower score
-            if ($flat_scores[0] < $flat_scores[1]) {
-                $player_with_lowest_score = array_keys($new_scores)[0];
-            } else {
-                $player_with_lowest_score = array_keys($new_scores)[1];
-            }
-            $first_picker = $player_with_lowest_score;
-        }
-
-        self::setGameStateValue('firstPicker', $first_picker);
-        $this->gamestate->changeActivePlayer($first_picker);
+        // Change first player
+        $new_first_player = self::getPlayerAfter(self::getGameStateValue('firstPlayer'))
+        self::setGameStateValue('firstPlayer', $new_first_player);
+        $this->gamestate->changeActivePlayer($new_first_player);
         $this->gamestate->nextState('nextHand');
     }
 
