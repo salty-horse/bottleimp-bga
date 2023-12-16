@@ -31,8 +31,9 @@ CREATE TABLE IF NOT EXISTS `bottles` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `owner` varchar(32),
   `price` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
 
 ALTER TABLE `player`
-    ADD `player_score_pile` INT UNSIGNED NOT NULL DEFAULT '0';
+    ADD `player_score_pile` INT UNSIGNED NOT NULL DEFAULT 0;
 

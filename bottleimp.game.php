@@ -18,7 +18,7 @@
 require_once(APP_GAMEMODULE_PATH.'module/table/table.game.php');
 
 
-class TheBottleImp extends Table {
+class BottleImp extends Table {
 
     function __construct() {
 
@@ -104,6 +104,11 @@ class TheBottleImp extends Table {
         $this->deck->createCards($cards, 'deck');
 
         // TODO: Init bottles
+        $sql = 'INSERT INTO bottles (id, owner, price) VALUES (1, "", 19)';
+        if ($this->getGameStateValue('numberOfBottles') == 2) {
+            $sql .= ', (2, "", 19)';
+        }
+        self::DbQuery($sql);
 
         // Activate first player (which is in general a good idea :))
         $this->activeNextPlayer();
@@ -647,7 +652,7 @@ class TheBottleImp extends Table {
         }
 
         // Change first player
-        $new_first_player = self::getPlayerAfter(self::getGameStateValue('firstPlayer'))
+        $new_first_player = self::getPlayerAfter(self::getGameStateValue('firstPlayer'));
         self::setGameStateValue('firstPlayer', $new_first_player);
         $this->gamestate->changeActivePlayer($new_first_player);
         $this->gamestate->nextState('nextHand');
