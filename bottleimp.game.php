@@ -256,7 +256,7 @@ class TheBottleImp extends Table {
 
     const SUIT_SYMBOLS = ['♠', '♥', '♣'];
     function getSuitLogName($card) {
-        return self::SUIT_SYMBOLS[$this->cards[$card['type_arg']]['suit'] - 1];
+        return self::SUIT_SYMBOLS[$card['type'] - 1];
     }
 
     //////////////////////////////////////////////////////////////////////////////
