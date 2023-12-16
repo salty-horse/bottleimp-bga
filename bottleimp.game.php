@@ -125,14 +125,17 @@ class TheBottleImp extends Table {
     */
     protected function getAllDatas()
     {
-        $result = [ 'players' => [] ];
+        $result = [
+            'players' => [],
+            'cards' => $this->cards,
+        ];
 
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
 
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
-        $sql = 'SELECT player_id id, player_score score FROM player';
-        $result['players'] = self::getCollectionFromDb($sql);
+        $result['players'] = self::getCollectionFromDb('SELECT player_id id, player_score score FROM player');
+        $result['bottles'] = self::getCollectionFromDb('SELECT id, owner, price FROM bottles');
 
         // Cards in player hand
         $result['hand'] = $this->deck->getCardsInLocation('hand', $current_player_id);
@@ -148,12 +151,6 @@ class TheBottleImp extends Table {
 
         foreach ($result['players'] as &$player) {
             $player_id = $player['id'];
-            if ($player_id != $current_player_id) {
-                $result['opponent_id'] = $player_id;
-            }
-            $strawmen = $this->getPlayerStrawmen($player_id);
-            $player['visible_strawmen'] = $strawmen['visible'];
-            $player['more_strawmen'] = $strawmen['more'];
             $player['won_tricks'] = $score_piles[$player_id]['won_tricks'];
             $player['score_pile'] = $score_piles[$player_id]['points'];
             $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
@@ -177,6 +174,7 @@ class TheBottleImp extends Table {
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
+        return 1;
     }
 
     //////////////////////////////////////////////////////////////////////////////

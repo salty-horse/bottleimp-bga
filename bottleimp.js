@@ -34,7 +34,6 @@ function (dojo, declare) {
                 '♠': 1,
                 '♥': 2,
                 '♣': 3,
-                '♦': 4,
             };
         },
 
@@ -59,7 +58,6 @@ function (dojo, declare) {
                 1: _('spades'),
                 2: _('hearts'),
                 3: _('clubs'),
-                4: _('diamonds'),
             };
 
             // Set dynamic UI strings
@@ -82,18 +80,10 @@ function (dojo, declare) {
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
-            dojo.query('#imp_trumpSelector li').forEach((node, index, arr) => {
-                dojo.connect(node, 'onclick', this, 'onChoosingTrump');
-            });
-
             // Create cards types
-            for (let suit = 1; suit <= 4; suit++) {
-                for (let rank = 1; rank <= 9; rank++) {
-                    // Build card type id
-                    let card_type_id = this.getCardUniqueId(suit, rank);
-                    this.playerHand.addItemType(card_type_id, card_type_id);
-                }
-            }
+			for (let card of Object.values(gamedatas.cards)) {
+				this.playerHand.addItemType(card.rank, card.rank);
+			}
 
             // Used for changing trump graphics
             this.visibleCards = {};
@@ -136,27 +126,6 @@ function (dojo, declare) {
                 this.putCardOnTable(player_id, color, value, card.id);
             }
 
-            if (this.gamedatas.trumpRank != '0' || this.gamedatas.trumpSuit != '0') {
-                this.markTrumps();
-            }
-
-            let elem = document.getElementById('imp_trump_rank');
-            if (this.gamedatas.trumpRank != '0') {
-                elem.textContent = this.gamedatas.trumpRank;
-            } else {
-                elem.textContent = '?';
-            }
-
-            elem = document.getElementById('imp_trump_suit');
-            if (this.gamedatas.trumpSuit != '0') {
-                elem.className = `imp_trump_indicator imp_suit_icon_${this.gamedatas.trumpSuit}`;
-                elem.title = elem['aria-label'] = this.suitNames[this.gamedatas.trumpSuit];
-            } else {
-                elem.textContent = '?';
-                elem.removeAttribute('title');
-                elem.className = 'imp_trump_indicator';
-            }
-
             this.addTooltipToClass('imp_playertablecard', _('Card played on the table'), '');
 
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -176,23 +145,6 @@ function (dojo, declare) {
             console.log('Entering state:', stateName);
 
             switch (stateName) {
-            case 'selectTrump':
-                if (this.isCurrentPlayerActive()) {
-                    document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'none');
-                    document.getElementById('imp_rankSelector').style.display = (this.gamedatas.trumpRank == '0') ? 'inline-block' : 'none';
-                    document.getElementById('imp_suitSelector').style.display = (this.gamedatas.trumpSuit == '0') ? 'inline-block' : 'none';
-                }
-                let elem = document.getElementById('imp_trump_rank');
-                if (this.gamedatas.trumpRank == '0') {
-                    elem.textContent = this.isCurrentPlayerActive() ? '' : '?';
-                }
-                elem = document.getElementById('imp_trump_suit');
-                if (this.gamedatas.trumpSuit == '0') {
-                    elem.textContent = this.isCurrentPlayerActive() ? '' : '?';
-                    elem.removeAttribute('title');
-                }
-                break;
-
             // Mark playable cards
             case 'playerTurn':
                 this.markActivePlayerTable(true);
@@ -225,11 +177,6 @@ function (dojo, declare) {
         onLeavingState: function(stateName)
         {
             switch (stateName) {
-            case 'selectTrump':
-                document.getElementById('imp_rankSelector').style.display = 'none';
-                document.getElementById('imp_suitSelector').style.display = 'none';
-                document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = '');
-                break;
             }
         },
 
@@ -240,10 +187,9 @@ function (dojo, declare) {
         {
             if (this.isCurrentPlayerActive()) {
                 switch(stateName) {
-                // Mark hand cards if player hasn't gifted yet
-                case 'giftCard':
-                    document.querySelectorAll('#imp_myhand .imp_card').forEach(
-                        e => e.classList.add('imp_playable'));
+                case 'passCards':
+                    this.game.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
+                    this.game.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
                     break;
                 }
             }
@@ -277,20 +223,14 @@ function (dojo, declare) {
             this.ajaxcall(`/bottleimp/vidrasso/${action}.html`, args, this, func, err);
         },
 
-        populateCardElement: function(card_div, suit, rank) {
-            dojo.place('<div class="imp_card_crown">&nbsp</div>', card_div);
-            dojo.place(`<div class="imp_card_main"><div class="imp_card_rank imp_suit_color_${suit}">${rank}</div><div class="imp_card_suit imp_card_suit_${suit}">&nbsp;</div></div>`, card_div);
-
-            if (rank == this.gamedatas.trumpRank) {
-                card_div.classList.add('imp_card_trump_rank');
-            } else if (suit == this.gamedatas.trumpSuit) {
-                card_div.classList.add('imp_card_trump_suit');
-            }
+        populateCardElement: function(card_div, rank) {
+			let card_info = this.gamedatas.cards[rank];
+            dojo.place(`<div class="imp_card_points">${card_info.points}</div>`, card_div);
+            dojo.place(`<div class="imp_card_main"><div class="imp_card_rank imp_suit_color_${card_info.suit}">${card_info.rank}</div><div class="imp_card_suit imp_card_suit_${card_info.suit}">&nbsp;</div></div>`, card_div);
         },
 
         setupNewCard: function(card_div, card_type_id, card_id) {
-            let [suit, rank] = this.getCardInfoById(card_type_id);
-            this.populateCardElement(card_div, suit, rank);
+            this.populateCardElement(card_div, card_type_id);
         },
 
         /** Override this function to inject html for log items  */
@@ -360,7 +300,7 @@ function (dojo, declare) {
                 id: `imp_straw_${player_id}_${straw_num}`,
                 class: 'imp_card',
             }, elem);
-            this.populateCardElement(cardElem, suit, rank);
+            this.populateCardElement(cardElem, rank);
             cardElem.dataset.card_id = card_id;
             this.strawmenById[card_id] = cardElem;
             if (player_id == this.player_id) {
@@ -375,7 +315,7 @@ function (dojo, declare) {
                 id: 'imp_cardontable_' + player_id,
                 class: 'imp_card imp_cardontable',
             }, 'imp_playertablecard_' + player_id);
-            this.populateCardElement(placedCard, suit, rank);
+            this.populateCardElement(placedCard, rank);
             placedCard.dataset.card_id = card_id;
         },
 
@@ -438,42 +378,6 @@ function (dojo, declare) {
                 {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
         },
 
-        // Change the graphics of the trump cards and reorder player hand
-        markTrumps: function() {
-            for (let [key, div_id] of Object.entries(this.visibleCards)) {
-                let [suit, rank] = key.split(',');
-                let elem = document.getElementById(div_id);
-                if (rank == this.gamedatas.trumpRank) {
-                    elem.classList.add('imp_card_trump_rank');
-                    elem.classList.remove('imp_card_trump_suit');
-                } else {
-                    elem.classList.remove('imp_card_trump_rank');
-                    if (suit == this.gamedatas.trumpSuit) {
-                        elem.classList.add('imp_card_trump_suit');
-                    } else {
-                        elem.classList.remove('imp_card_trump_suit');
-                    }
-                }
-            }
-
-            let weights = {}
-            for (let suit = 1; suit <= 4; suit++) {
-                for (let rank = 1; rank <= 9; rank++) {
-                    // Build card type id
-                    let card_type_id = this.getCardUniqueId(suit, rank);
-
-                    if (rank == this.gamedatas.trumpRank) {
-                        weights[card_type_id] = -1000 + card_type_id;
-                    } else if (suit == this.gamedatas.trumpSuit) {
-                        weights[card_type_id] = -100 + card_type_id;
-                    } else {
-                        weights[card_type_id] = card_type_id;
-                    }
-                }
-            }
-            this.playerHand.changeItemsWeight(weights);
-        },
-
         // /////////////////////////////////////////////////
         // // Player's action
 
@@ -525,18 +429,6 @@ function (dojo, declare) {
             });
         },
 
-        onChoosingTrump: function(event) {
-            if (!this.checkAction('selectTrump'))
-                return;
-
-            let data = event.currentTarget.dataset;
-            this.ajaxAction('selectTrump', {
-                trump_type: data.type,
-                id: data.id,
-                lock : true
-            });
-        },
-
         ///////////////////////////////////////////////////
         //// Reaction to cometD notifications
 
@@ -554,13 +446,10 @@ function (dojo, declare) {
 
             dojo.subscribe('newHand', this, 'notif_newHand');
             dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
-            dojo.subscribe('selectTrumpRank', this, 'notif_selectTrumpRank');
-            dojo.subscribe('selectTrumpSuit', this, 'notif_selectTrumpSuit');
             dojo.subscribe('giftCardPrivate', this, 'notif_giftCardPrivate');
             dojo.subscribe('giftCard', this, 'notif_giftCard');
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
-            dojo.subscribe('revealStrawmen', this, 'notif_revealStrawmen');
             dojo.subscribe('trickWin', this, 'notif_trickWin');
             dojo.subscribe('giveAllCardsToPlayer', this, 'notif_giveAllCardsToPlayer');
             this.notifqueue.setSynchronous('giveAllCardsToPlayer', 1000);
@@ -581,9 +470,6 @@ function (dojo, declare) {
             if (this.isSpectator) {
                 this.visibleCards = {};
             }
-
-            // Reset sorting order
-            this.markTrumps();
 
             // Reset scores and hand size
             for (let scorePile of Object.values(this.scorePiles)) {
@@ -620,8 +506,6 @@ function (dojo, declare) {
                 elem.removeAttribute('title');
                 elem.style.display = 'block';
             }
-
-            this.markTrumps();
         },
 
         notif_selectTrumpSuit: function(notif) {
@@ -637,8 +521,6 @@ function (dojo, declare) {
             if (elem.style.display == 'none') {
                 elem.style.display = 'block';
             }
-
-            this.markTrumps();
         },
 
         notif_giftCardPrivate: function(notif) {
