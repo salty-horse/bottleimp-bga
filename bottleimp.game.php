@@ -33,10 +33,8 @@ class BottleImp extends Table {
         parent::__construct();
         self::initGameStateLabels([
             'roundNumber' => 10,
-            'trumpRank' => 11,
-            'trumpSuit' => 12,
-            'ledSuit' => 13,
-            'firstPlayer' => 14,
+            'ledSuit' => 11,
+            'firstPlayer' => 12,
             'roundsPerPlayer' => 100,
             'numberOfBottles' => 101,
             // 'teamMode' => 102, # TODO options for team modes when playing with 1 bottle
@@ -62,16 +60,14 @@ class BottleImp extends Table {
     protected function setupNewGame($players, $options = [])
     {
         $gameinfos = $this->getGameinfos();
-        if ($gameinfos['favorite_colors_support'])
-            self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
-        self::reloadPlayersBasicInfos();
+        $default_colors = $gameinfos['player_colors'];
 
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
         $sql = 'INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ';
         $values = [];
         foreach ($players as $player_id => $player) {
-            $color = array_shift($gameinfos['player_colors']);
+            $color = array_shift($default_colors);
             $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes($player['player_name'])."','".addslashes($player['player_avatar'])."')";
 
             // Player statistics - TODO
@@ -79,16 +75,16 @@ class BottleImp extends Table {
             // $this->initStat('player', 'average_points_per_trick', 0, $player_id);
             // $this->initStat('player', 'number_of_trumps_played', 0, $player_id);
         }
-        $sql .= implode($values, ',');
-        self::DbQuery($sql);
+        self::DbQuery($sql . implode($values, ','));
+
+        self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
+        self::reloadPlayersBasicInfos();
 
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
 
         self::setGameStateInitialValue('roundNumber', 0);
-        self::setGameStateInitialValue('trumpRank', 0);
-        self::setGameStateInitialValue('trumpSuit', 0);
 
         // Init game statistics
         // (note: statistics are defined in your stats.inc.php file)
@@ -103,7 +99,7 @@ class BottleImp extends Table {
 
         $this->deck->createCards($cards, 'deck');
 
-        // TODO: Init bottles
+        // Init bottles
         $sql = 'INSERT INTO bottles (id, owner, price) VALUES (1, "", 19)';
         if ($this->getGameStateValue('numberOfBottles') == 2) {
             $sql .= ', (2, "", 19)';
@@ -374,8 +370,6 @@ class BottleImp extends Table {
      */
     function stNewHand() {
         $this->incGameStateValue('roundNumber', 1);
-        self::setGameStateValue('trumpRank', 0);
-        self::setGameStateValue('trumpSuit', 0);
 
         // Shuffle deck
         $this->deck->moveAllCardsInLocation(null, 'deck');
@@ -424,6 +418,7 @@ class BottleImp extends Table {
             ]);
         }
 
+        $this->gamestate->changeActivePlayer($this->getGameStateValue('firstPlayer'));
         $this->gamestate->nextState();
     }
 
@@ -675,28 +670,13 @@ class BottleImp extends Table {
     {
         $state_name = $state['name'];
 
-        if ($state_name == 'selectTrump') {
-            // Select a random trump
-            $trump_rank = $this->getGameStateValue('trumpRank');
-            $trump_suit = $this->getGameStateValue('trumpSuit');
-
-            if ($trump_rank) {
-                $this->selectTrumpForPlayer('suit', bga_rand(1, 4), $active_player);
-            } else if ($trump_suit) {
-                $this->selectTrumpForPlayer('rank', bga_rand(1, 9), $active_player);
-            } else {
-                if (bga_rand(0, 1)) {
-                    $this->selectTrumpForPlayer('suit', bga_rand(1, 4), $active_player);
-                } else {
-                    $this->selectTrumpForPlayer('rank', bga_rand(1, 9), $active_player);
-                }
-            }
-        } else if ($state_name == 'giftCard') {
-            // Gift a random card
+        // TODO
+        if ($state_name == 'passCards') {
+            // Pass a random card
             $cards_in_hand = $this->deck->getPlayerHand($active_player);
             $random_key = array_rand($cards_in_hand);
             $card_id = $cards_in_hand[$random_key]['id'];
-            $this->giftCardFromPlayer($card_id, $active_player);
+            $this->passCardsFromPlayer($card_id, $active_player);
         } else if ($state_name == 'playerTurn') {
             // Play a random card
             $playable_cards = $this->getPlayableCards($active_player);
