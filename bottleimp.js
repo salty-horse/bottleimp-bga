@@ -61,13 +61,14 @@ function (dojo, declare) {
             };
 
             // Set dynamic UI strings
-            if (this.isSpectator) {
-                for (const player_info of Object.values(this.gamedatas.players)) {
-                    this.setStrawmanPlayerLabel(player_info);
-                }
-            } else {
-                this.setStrawmanPlayerLabel(gamedatas.players[gamedatas.opponent_id]);
-            }
+            // TODO: 2 players
+            // if (this.isSpectator) {
+            //     for (const player_info of Object.values(this.gamedatas.players)) {
+            //         this.setStrawmanPlayerLabel(player_info);
+            //     }
+            // } else {
+            //     this.setStrawmanPlayerLabel(gamedatas.players[gamedatas.opponent_id]);
+            // }
 
             // Player hand
             this.playerHand = new ebg.stock();
@@ -81,9 +82,9 @@ function (dojo, declare) {
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
             // Create cards types
-			for (let card of Object.values(gamedatas.cards)) {
-				this.playerHand.addItemType(card.rank, card.rank);
-			}
+            for (let card of Object.values(gamedatas.cards)) {
+                this.playerHand.addItemType(card.rank, card.rank);
+            }
 
             // Used for changing trump graphics
             this.visibleCards = {};
@@ -113,7 +114,8 @@ function (dojo, declare) {
                 hand_size_counter.setValue(player_info.hand_size);
 
                 // Strawmen
-                this.initStrawmen(player_id, player_info.visible_strawmen, player_info.more_strawmen);
+                // TODO: 2p
+                // this.initStrawmen(player_id, player_info.visible_strawmen, player_info.more_strawmen);
             }
             this.addTooltipToClass('imp_hand_size', _('Number of cards in hand'), '');
 
@@ -188,8 +190,9 @@ function (dojo, declare) {
             if (this.isCurrentPlayerActive()) {
                 switch(stateName) {
                 case 'passCards':
-                    this.game.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
-                    this.game.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
+                    // TODO functions
+                    this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
+                    this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
                     break;
                 }
             }
@@ -224,7 +227,7 @@ function (dojo, declare) {
         },
 
         populateCardElement: function(card_div, rank) {
-			let card_info = this.gamedatas.cards[rank];
+            let card_info = this.gamedatas.cards[rank];
             dojo.place(`<div class="imp_card_points">${card_info.points}</div>`, card_div);
             dojo.place(`<div class="imp_card_main"><div class="imp_card_rank imp_suit_color_${card_info.suit}">${card_info.rank}</div><div class="imp_card_suit imp_card_suit_${card_info.suit}">&nbsp;</div></div>`, card_div);
         },
@@ -259,23 +262,12 @@ function (dojo, declare) {
             return `<div role=\"img\" title=\"${suit_name}\" aria-label=\"${suit_name}\" class=\"imp_log_suit imp_suit_icon_${suit_id}\"></div>`;
         },
 
-        getCardUniqueId: function(suit, rank) {
-            return (suit - 1) * 9 + (rank - 1);
-        },
-
-        getCardInfoById: function(card_id) {
-            return [
-                Math.floor(card_id / 9) + 1,
-                card_id % 9 + 1,
-            ];
-        },
-
         initPlayerHand: function(card_list) {
             for (let i in card_list) {
                 let card = card_list[i];
                 let suit = card.type;
                 let rank = card.type_arg;
-                this.playerHand.addToStockWithId(this.getCardUniqueId(suit, rank), card.id);
+                this.playerHand.addToStockWithId(rank, card.id);
                 this.visibleCards[`${suit},${rank}`] = this.playerHand.getItemDivId(card.id);
             }
         },
