@@ -220,7 +220,7 @@ function (dojo, declare) {
             }
 
             let name = this.game_name;
-            this.ajaxcall(`/bottleimp/vidrasso/${action}.html`, args, this, func, err);
+            this.ajaxcall(`/bottleimp/bottleimp/${action}.html`, args, this, func, err);
         },
 
         populateCardElement: function(card_div, rank) {

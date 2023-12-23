@@ -9,7 +9,7 @@
 -- See http://en.boardgamearena.com/#!doc/Studio for more information.
 -------
 
-    bottleimp_vidrasso.tpl
+    bottleimp_bottleimp.tpl
 
     This is the HTML template of your game.
 
