@@ -30,6 +30,15 @@
 </div>
 <!-- END player -->
 
+<div id="imp_passCards">
+<!-- BEGIN pass -->
+<div id="imp_pass_{PASS_TYPE}" class="imp_pass whiteblock">
+    <div class="imp_playertablename"></div>
+    <div class="imp_playertablecard" id="imp_passcard_{PASS_TYPE}"></div>
+</div>
+<!-- END pass -->
+</div>
+
 </div>
 
 <div id="imp_myhand_wrap" class="whiteblock">

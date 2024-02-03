@@ -1,0 +1,32 @@
+{
+  "100": {
+    "name": "Rounds per player",
+    "values": {
+      "2": {
+        "name": "Standard game (2 rounds per player)"
+      },
+      "3": {
+        "name": "Long game (3 rounds per player)"
+      }
+    },
+    "default": 2
+  },
+  "101": {
+    "name": "Number of bottles",
+    "values": {
+      "1": {
+        "name": "One bottle (Team mode)"
+      },
+      "2": {
+        "name": "Two bottles (No teams)"
+      }
+    },
+    "default": 1,
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": 5
+      }
+    ]
+  }
+}

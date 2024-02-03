@@ -81,6 +81,26 @@ function (dojo, declare) {
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
+            // Init pass boxes
+            dojo.query('.imp_pass').on('click', function(e) {
+                this.markActivePassBox(e.currentTarget.id);
+            });
+
+            // The player order array mixes strings and numbers
+            let playerorder = gamedatas.playerorder.map(x => parseInt(x));
+            let playerPos = playerorder.indexOf(this.player_id);
+            let passTitles = {
+                'left': playerorder[(playerPos + 1) % playerorder.length],
+                'right': playerorder[(playerPos == 0 ? playerorder.length : playerPos) - 1],
+            };
+            document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = _("Devil's Trick");
+            for (let k in passTitles) {
+                let player_info = gamedatas.players[passTitles[k]];
+                document.querySelector(`#imp_pass_${k} > .imp_playertablename`).innerHTML = dojo.string.substitute(
+                    "${player_name}",
+                    {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
+            }
+
             // Create cards types
             for (let card of Object.values(gamedatas.cards)) {
                 this.playerHand.addItemType(card.rank, card.rank);
@@ -147,6 +167,13 @@ function (dojo, declare) {
             console.log('Entering state:', stateName);
 
             switch (stateName) {
+            case 'passCards':
+                if (!this.isCurrentPlayerActive())
+                    break;
+                document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'none');
+                document.getElementById('imp_passCards').style.display = 'flex';
+                this.markActivePassBox('imp_pass_left');
+                break;
             // Mark playable cards
             case 'playerTurn':
                 this.markActivePlayerTable(true);
@@ -191,8 +218,8 @@ function (dojo, declare) {
                 switch(stateName) {
                 case 'passCards':
                     // TODO functions
-                    this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
-                    this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
+                    // this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
+                    // this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
                     break;
                 }
             }
@@ -368,6 +395,11 @@ function (dojo, declare) {
             document.querySelector(`#imp_player_${player_info.id}_strawmen_wrap > h3`).innerHTML = dojo.string.substitute(
                 _("${player_name}'s strawmen"),
                 {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
+        },
+
+        markActivePassBox: function(elem_id) {
+            this.activePassBox = elem_id;
+            // TODO: Change text, highlight box
         },
 
         // /////////////////////////////////////////////////

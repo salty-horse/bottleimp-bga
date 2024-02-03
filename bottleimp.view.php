@@ -60,7 +60,14 @@ class view_bottleimp_bottleimp extends game_view {
                 $this->tpl['TOP_PLAYER_ID'] = $player_id;
             }
         }
-        
+
+        $this->page->begin_block($template, 'pass');
+        foreach (['left', 'center', 'right'] as $pass_type) {
+            $this->page->insert_block('pass', [
+                'PASS_TYPE' => $pass_type,
+            ]);
+        }
+
         $this->tpl['MY_HAND'] = self::_('My hand');
         $this->tpl['MY_STRAWMEN'] = self::_('My strawmen');
         $this->tpl['TRUMP_RANK'] = self::_('Trump rank');

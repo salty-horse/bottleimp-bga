@@ -51,11 +51,32 @@
     gap: 0px 60px;
 }
 
+#imp_passCards {
+    /* display: flex; */
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0px 60px;
+}
+
+#imp_centerarea {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0px 60px;
+}
+
 .imp_playertablename {
     font-weight: bold;
 }
 
 .imp_playertable {
+    text-align: center;
+    width: 180px;
+}
+
+.imp_pass {
     text-align: center;
     width: 180px;
 }
@@ -178,6 +199,11 @@
     background-color: white;
 }
 
+.imp_card_points {
+    right: 15px;
+    position: absolute;
+}
+
 .imp_straw_more {
     background-image: url('img/card_back.png');
     width: 93px;
@@ -298,11 +324,15 @@
     color: #235fa4;
 }
 
+.imp_card_rank {
+    padding-left: 5px;
+}
 .imp_card_suit {
-    transform: translateX(-6.45px);
+    /* transform: translateX(-6.45px); */
     background-position: center;
     background-repeat: no-repeat;
-    background-size: 55.8px 46.5px;
+    /* background-size: 55.8px 46.5px; */
+    padding-right: 5px;
 }
 
 .imp_card_suit.imp_card_suit_1 {

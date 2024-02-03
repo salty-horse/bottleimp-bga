@@ -75,7 +75,7 @@ class BottleImp extends Table {
             // $this->initStat('player', 'average_points_per_trick', 0, $player_id);
             // $this->initStat('player', 'number_of_trumps_played', 0, $player_id);
         }
-        self::DbQuery($sql . implode($values, ','));
+        self::DbQuery($sql . implode(',', $values));
 
         self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
