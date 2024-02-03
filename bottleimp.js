@@ -82,8 +82,11 @@ function (dojo, declare) {
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
             // Init pass boxes
-            dojo.query('.imp_pass').on('click', function(e) {
-                this.markActivePassBox(e.currentTarget.id);
+            document.getElementById('imp_passCards').style.display = 'none';
+            this.activePassType = null;
+            this.passCards = {};
+            dojo.query('.imp_pass').on('click', (e) => {
+                this.markActivePassBox(e.currentTarget.dataset.passType);
             });
 
             // The player order array mixes strings and numbers
@@ -94,6 +97,16 @@ function (dojo, declare) {
                 'right': playerorder[(playerPos == 0 ? playerorder.length : playerPos) - 1],
             };
             document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = _("Devil's Trick");
+            // TODO: Are tooltips necessary?
+            // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
+
+            if (playerorder.length == 2) {
+                // TODO: Tooltips
+                this.passKeys = ['left', 'center', 'center2', 'right'];
+            } else {
+                this.passKeys = ['left', 'center', 'right'];
+            }
+
             for (let k in passTitles) {
                 let player_info = gamedatas.players[passTitles[k]];
                 document.querySelector(`#imp_pass_${k} > .imp_playertablename`).innerHTML = dojo.string.substitute(
@@ -105,9 +118,6 @@ function (dojo, declare) {
             for (let card of Object.values(gamedatas.cards)) {
                 this.playerHand.addItemType(card.rank, card.rank);
             }
-
-            // Used for changing trump graphics
-            this.visibleCards = {};
 
             // Cards in player's hand
             this.initPlayerHand(this.gamedatas.hand);
@@ -142,13 +152,9 @@ function (dojo, declare) {
             // Cards played on table
             for (i in this.gamedatas.cardsontable) {
                 var card = this.gamedatas.cardsontable[i];
-                var color = card.type;
-                var value = card.type_arg;
                 var player_id = card.location_arg;
-                this.putCardOnTable(player_id, color, value, card.id);
+                this.putCardOnTable(player_id, card.type_arg, card.id);
             }
-
-            this.addTooltipToClass('imp_playertablecard', _('Card played on the table'), '');
 
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
@@ -168,11 +174,15 @@ function (dojo, declare) {
 
             switch (stateName) {
             case 'passCards':
-                if (!this.isCurrentPlayerActive())
-                    break;
                 document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'none');
+                if (this.isSpectator)
+                    break;
                 document.getElementById('imp_passCards').style.display = 'flex';
-                this.markActivePassBox('imp_pass_left');
+                if (this.isCurrentPlayerActive()) {
+                    this.markActivePassBox('left');
+                } else {
+                    // TODO: Hide center boxes to prepare for receiving cards
+                }
                 break;
             // Mark playable cards
             case 'playerTurn':
@@ -217,9 +227,9 @@ function (dojo, declare) {
             if (this.isCurrentPlayerActive()) {
                 switch(stateName) {
                 case 'passCards':
-                    // TODO functions
-                    // this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
-                    // this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
+                    this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
+                    this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
+                    dojo.addClass('passCards_button', 'disabled');
                     break;
                 }
             }
@@ -259,8 +269,8 @@ function (dojo, declare) {
             dojo.place(`<div class="imp_card_main"><div class="imp_card_rank imp_suit_color_${card_info.suit}">${card_info.rank}</div><div class="imp_card_suit imp_card_suit_${card_info.suit}">&nbsp;</div></div>`, card_div);
         },
 
-        setupNewCard: function(card_div, card_type_id, card_id) {
-            this.populateCardElement(card_div, card_type_id);
+        setupNewCard: function(card_div, rank, card_id) {
+            this.populateCardElement(card_div, rank);
         },
 
         /** Override this function to inject html for log items  */
@@ -295,41 +305,10 @@ function (dojo, declare) {
                 let suit = card.type;
                 let rank = card.type_arg;
                 this.playerHand.addToStockWithId(rank, card.id);
-                this.visibleCards[`${suit},${rank}`] = this.playerHand.getItemDivId(card.id);
             }
         },
 
-        initStrawmen: function(player_id, visible_strawmen, more_strawmen) {
-            for (const [ix, straw] of visible_strawmen.entries()) {
-                if (!more_strawmen || more_strawmen[ix]) {
-                    let more = document.createElement('div');
-                    more.className = 'imp_straw_more';
-                    document.getElementById(`imp_playerstraw_${player_id}_${ix+1}`).prepend(more);
-                }
-                if (straw) {
-                    this.setStrawman(player_id, ix + 1, straw.type, straw.type_arg, straw.id);
-                    this.visibleCards[`${straw.type},${straw.type_arg}`] = `imp_straw_${player_id}_${ix + 1}`;
-                }
-            }
-        },
-
-        setStrawman: function(player_id, straw_num, suit, rank, card_id) {
-            let elem = document.getElementById(`imp_playerstraw_${player_id}_${straw_num}`);
-            let cardElem = dojo.create('div', {
-                id: `imp_straw_${player_id}_${straw_num}`,
-                class: 'imp_card',
-            }, elem);
-            this.populateCardElement(cardElem, rank);
-            cardElem.dataset.card_id = card_id;
-            this.strawmenById[card_id] = cardElem;
-            if (player_id == this.player_id) {
-                dojo.connect(cardElem, 'onclick', this, 'onChoosingStrawman');
-            }
-            return cardElem;
-        },
-
-        putCardOnTable: function(player_id, suit, rank, card_id) {
-            let cardInHand = false;
+        putCardOnTable: function(player_id, rank, card_id) {
             let placedCard = dojo.create('div', {
                 id: 'imp_cardontable_' + player_id,
                 class: 'imp_card imp_cardontable',
@@ -338,8 +317,8 @@ function (dojo, declare) {
             placedCard.dataset.card_id = card_id;
         },
 
-        playCardOnTable: function(player_id, suit, rank, card_id) {
-            this.putCardOnTable(player_id, suit, rank, card_id);
+        playCardOnTable: function(player_id, rank, card_id) {
+            this.putCardOnTable(player_id, rank, card_id);
 
             let strawElem = this.strawmenById[card_id];
             if (strawElem) {
@@ -366,24 +345,75 @@ function (dojo, declare) {
             this.slideToObject('imp_cardontable_' + player_id, 'imp_playertablecard_' + player_id).play();
         },
 
+        putPassCardOnTable: function(card_id, pass_type) {
+            let placedCard = dojo.create('div', {
+                id: 'imp_passcardontable_' + card_id,
+                class: 'imp_card imp_cardontable',
+            }, 'imp_passcard_' + pass_type);
+            this.populateCardElement(placedCard, this.gamedatas.cards_by_id[card_id]);
+            placedCard.dataset.card_id = card_id;
+        },
+
+        playPassCard: function(card_id) {
+            let pass_type = this.activePassType;
+            // If there's already a card in the pass box, put it back in the hand
+            let old_card_id = this.passCards[pass_type];
+            if (old_card_id) {
+                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[old_card_id], old_card_id, `imp_passcard_${pass_type}`);
+                dojo.destroy(`imp_passcardontable_${old_card_id}`);
+            }
+
+            this.passCards[pass_type] = card_id;
+
+            // Remove card from hand and move to table
+            let elem_id = `imp_passcardontable_${card_id}`;
+            this.putPassCardOnTable(card_id, pass_type);
+            this.placeOnObject(elem_id, 'imp_myhand_item_' + card_id);
+            this.slideToObject(elem_id, 'imp_passcard_' + pass_type).play();
+            this.playerHand.removeFromStockById(card_id);
+            $(elem_id).onclick = (e) => {
+                dojo.destroy(e);
+                delete this.passCards[pass_type];
+                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passCards`);
+                // this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pass_type}`);
+
+                // TODO switch focus and undo confirm
+                // this.markActivePassBox(this.activePassType);
+                dojo.addClass('passCards_button', 'disabled');
+            };
+
+            if (Object.keys(this.passCards).length == this.passKeys.length) {
+                dojo.removeClass('passCards_button', 'disabled');
+                return;
+            }
+
+            // Change active pass box
+            for (let pass of this.passKeys) {
+                if (!this.passCards[pass]) {
+                    this.markActivePassBox(pass);
+                    break;
+                }
+            }
+        },
+
         markActivePlayerTable: function(turn_on, player_id) {
             if (!player_id) {
                 player_id = this.getActivePlayerId();
             }
-            if (turn_on && player_id && document.getElementById(`imp_playertable_${player_id}`).classList.contains('imp_table_currentplayer'))
+            if (turn_on && player_id && document.getElementById(`imp_playertable_${player_id}`).classList.contains('imp_table_selected'))
                 // Do nothing
                 return;
 
             // Remove from all players before adding for desired player
-            document.querySelectorAll('#imp_centerarea .imp_table_currentplayer').forEach(
-                e => e.classList.remove('imp_table_currentplayer'));
+            document.querySelectorAll('#imp_centerarea .imp_table_selected').forEach(
+                e => e.classList.remove('imp_table_selected'));
             if (!turn_on) {
                 return;
             }
             if (!player_id) {
                 return;
             }
-            document.getElementById(`imp_playertable_${player_id}`).classList.add('imp_table_currentplayer')
+            document.getElementById(`imp_playertable_${player_id}`).classList.add('imp_table_selected')
         },
 
         unmarkPlayableCards: function() {
@@ -391,15 +421,13 @@ function (dojo, declare) {
                 e => e.classList.remove('imp_playable'));
         },
 
-        setStrawmanPlayerLabel: function(player_info) {
-            document.querySelector(`#imp_player_${player_info.id}_strawmen_wrap > h3`).innerHTML = dojo.string.substitute(
-                _("${player_name}'s strawmen"),
-                {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
-        },
+        markActivePassBox: function(pass_type) {
+            this.activePassType = pass_type;
 
-        markActivePassBox: function(elem_id) {
-            this.activePassBox = elem_id;
-            // TODO: Change text, highlight box
+            document.querySelectorAll('#imp_passCards .imp_table_selected').forEach(
+                e => e.classList.remove('imp_table_selected'));
+            document.getElementById(`imp_pass_${pass_type}`).classList.add('imp_table_selected')
+            // TODO: Change instruction label
         },
 
         // /////////////////////////////////////////////////
@@ -414,43 +442,38 @@ function (dojo, declare) {
          */
 
         onPlayerHandSelectionChanged: function() {
-            var items = this.playerHand.getSelectedItems();
+            let items = this.playerHand.getSelectedItems();
             if (items.length == 0)
                 return
             this.playerHand.unselectAll();
-            if (!document.getElementById(this.playerHand.getItemDivId(items[0].id)).classList.contains('imp_playable')) {
-                return;
-            }
 
             if (this.checkAction('playCard', true)) {
-                var card_id = items[0].id;
+                if (!document.getElementById(this.playerHand.getItemDivId(items[0].id)).classList.contains('imp_playable')) {
+                    return;
+                }
+                let card_id = items[0].id;
                 this.ajaxAction('playCard', {
                     id: card_id,
                 });
-            } else if (this.checkAction('giftCard')) {
-                var card_id = items[0].id;
-                this.ajaxAction('giftCard', {
-                    id: card_id,
-                });
+            } else if (this.checkAction('passCards', true)) {
+                this.playPassCard(items[0].id);
             } else {
                 this.playerHand.unselectAll();
             }
         },
 
-        onChoosingStrawman: function(event) {
-            if (!this.checkAction('playCard', true))
+        onPassCards: function(event) {
+            if (!this.checkAction('passCards', true))
                 return;
 
-            if (!event.currentTarget.classList.contains('imp_playable'))
+            this.ajaxAction('passCards', this.passCards);
+        },
+
+        onResetPassCards: function(event) {
+            if (!this.checkAction('passCards', true))
                 return;
 
-            let card_id = event.currentTarget.dataset.card_id;
-            if (!card_id)
-                return;
-
-            this.ajaxAction('playCard', {
-                id: card_id,
-            });
+            // TODO
         },
 
         ///////////////////////////////////////////////////
@@ -482,19 +505,6 @@ function (dojo, declare) {
         },
 
         notif_newHandPublic: function(notif) {
-            document.getElementById('imp_trump_rank').textContent = '?';
-            let elem = document.getElementById('imp_trump_suit');
-            elem.textContent = '?';
-            elem.removeAttribute('title');
-            elem.className = 'imp_trump_indicator';
-            this.gamedatas.trumpRank = '0';
-            this.gamedatas.trumpSuit = '0';
-
-            // The spectator doesn't get the private newHand notification
-            if (this.isSpectator) {
-                this.visibleCards = {};
-            }
-
             // Reset scores and hand size
             for (let scorePile of Object.values(this.scorePiles)) {
                 scorePile.setValue(0);
@@ -503,48 +513,13 @@ function (dojo, declare) {
             for (let handSize of Object.values(this.handSizes)) {
                 handSize.setValue(notif.args.hand_size);
             }
-
-            for (let player_id in notif.args.strawmen) {
-                this.initStrawmen(player_id, notif.args.strawmen[player_id]);
-            }
         },
 
         notif_newHand: function(notif) {
             // We received a new full hand of 13 cards.
             this.playerHand.removeAll();
 
-            this.visibleCards = {};
             this.initPlayerHand(notif.args.hand_cards);
-        },
-
-        notif_selectTrumpRank: function(notif) {
-            this.gamedatas.trumpRank = notif.args.rank;
-            let elem = document.getElementById('imp_trump_rank');
-            elem.textContent = notif.args.rank;
-            elem.style.display = 'block';
-            document.getElementById('imp_rankSelector').style.display = 'none';
-
-            elem = document.getElementById('imp_trump_suit');
-            if (elem.style.display == 'none') {
-                elem.textContent = '?';
-                elem.removeAttribute('title');
-                elem.style.display = 'block';
-            }
-        },
-
-        notif_selectTrumpSuit: function(notif) {
-            this.gamedatas.trumpSuit = notif.args.suit_id;
-            let elem = document.getElementById('imp_trump_suit');
-            elem.style.display = 'block';
-            elem.textContent = '';
-            elem.className = `imp_trump_indicator imp_suit_icon_${this.gamedatas.trumpSuit}`;
-            elem.title = elem['aria-label'] = this.suitNames[this.gamedatas.trumpSuit];
-            document.getElementById('imp_suitSelector').style.display = 'none';
-
-            elem = document.getElementById('imp_trump_rank');
-            if (elem.style.display == 'none') {
-                elem.style.display = 'block';
-            }
         },
 
         notif_giftCardPrivate: function(notif) {
@@ -563,23 +538,7 @@ function (dojo, declare) {
             // Mark the active player, in case this was an automated move (skipping playerTurn state)
             this.markActivePlayerTable(true, notif.args.player_id);
             this.unmarkPlayableCards();
-            this.playCardOnTable(notif.args.player_id, notif.args.suit_id, notif.args.value, notif.args.card_id);
-        },
-
-        notif_revealStrawmen: function(notif) {
-            for (let [player_id, revealed_card] of Object.entries(notif.args.revealed_cards)) {
-                let pile_id = revealed_card.pile;
-                let card = revealed_card.card;
-
-                let pileElem = document.getElementById(`imp_playerstraw_${player_id}_${pile_id}`);
-                let more = pileElem.querySelector('.imp_straw_more');
-                if (more) {
-                    this.fadeOutAndDestroy(more);
-                }
-                let newCard = this.setStrawman(player_id, pile_id, card.type, card.type_arg, card.id);
-                newCard.style.opacity = 0;
-                dojo.fadeIn({node: newCard}).play();
-            }
+            this.playCardOnTable(notif.args.player_id, notif.args.value, notif.args.card_id);
         },
 
         notif_trickWin: function(notif) {

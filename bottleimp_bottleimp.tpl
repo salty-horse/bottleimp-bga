@@ -32,7 +32,7 @@
 
 <div id="imp_passCards">
 <!-- BEGIN pass -->
-<div id="imp_pass_{PASS_TYPE}" class="imp_pass whiteblock">
+<div id="imp_pass_{PASS_TYPE}" data-pass-type="{PASS_TYPE}" class="imp_pass whiteblock">
     <div class="imp_playertablename"></div>
     <div class="imp_playertablecard" id="imp_passcard_{PASS_TYPE}"></div>
 </div>

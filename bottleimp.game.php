@@ -27,7 +27,7 @@ class BottleImp extends Table {
         //  Here, you can assign labels to global variables you are using for this game.
         //  You can use any number of global variables with IDs between 10 and 99.
         //  If your game has options (variants), you also have to associate here a label to
-        //  the corresponding ID in gameoptions.inc.php.
+        //  the corresponding ID in gameoptions.json.
         // Note: afterwards, you can get/set the global variables with getGameStateValue/setGameStateInitialValue/setGameStateValue
 
         parent::__construct();
@@ -87,7 +87,7 @@ class BottleImp extends Table {
         self::setGameStateInitialValue('roundNumber', 0);
 
         // Init game statistics
-        // (note: statistics are defined in your stats.inc.php file)
+        // (note: statistics are defined in your stats.json file)
 
         // Create cards
         $cards = [];
@@ -129,6 +129,7 @@ class BottleImp extends Table {
         $result = [
             'players' => [],
             'cards' => $this->cards,
+            'cards_by_id' => self::getCollectionFromDB("SELECT card_id id, card_type_arg FROM card", true ),
         ];
 
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
@@ -267,7 +268,7 @@ class BottleImp extends Table {
      */
     function passCards($left, $right, $center, $center2) {
         $player_id = self::getCurrentPlayerId();
-        $this->passCardsFromPlayer($card_id, $player_id);
+        $this->passCardsFromPlayer($left, $right, $center, $center2, $player_id);
     }
 
     function passCardsFromPlayer($left, $right, $center, $center2, $player_id) {

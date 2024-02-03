@@ -35,27 +35,17 @@ class action_bottleimp extends APP_GameAction {
 
     public function passCards() {
         self::setAjaxMode();
-        $left = self::getArg('left', AT_float, true);
-        $right = self::getArg('right', AT_float, true);
-        $center = self::getArg('center', AT_float, true);
-        $center2 = self::getArg('center2', AT_float, false);
-        if (!array_key_exists($left, $this->cards))
-            throw new BgaUserException(self::_('Invalid card value'));
-        if (!array_key_exists($right, $this->cards))
-            throw new BgaUserException(self::_('Invalid card value'));
-        if (!array_key_exists($center, $this->cards))
-            throw new BgaUserException(self::_('Invalid card value'));
-        if ($center2 && !array_key_exists($center2, $this->cards))
-            throw new BgaUserException(self::_('Invalid card value'));
+        $left = self::getArg('left', AT_posint, true);
+        $right = self::getArg('right', AT_posint, true);
+        $center = self::getArg('center', AT_posint, true);
+        $center2 = self::getArg('center2', AT_posint, false);
         $this->game->passCards($left, $right, $center, $center2);
         self::ajaxResponse();
     }
 
     public function playCard() {
         self::setAjaxMode();
-        $card_id = self::getArg('id', AT_float, true);
-        if (!array_key_exists($card_id, $this->cards))
-            throw new BgaUserException(self::_('Invalid card value'));
+        $card_id = self::getArg('id', AT_posint, true);
         $this->game->playCard($card_id);
         self::ajaxResponse();
     }

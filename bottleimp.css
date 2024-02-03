@@ -81,7 +81,7 @@
     width: 180px;
 }
 
-.imp_table_currentplayer {
+.imp_table_selected {
     outline: 2px dashed black;
     outline-offset: -2px;
 }
