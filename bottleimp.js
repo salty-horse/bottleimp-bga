@@ -27,8 +27,8 @@ define([
 function (dojo, declare) {
     return declare('bgagame.bottleimp', ebg.core.gamegui, {
         constructor: function(){
-            this.cardWidth = 93;
-            this.cardHeight = 93;
+            this.cardWidth = 143;
+            this.cardHeight = 200;
 
             this.suitSymbolToId = {
                 '♠': 1,
@@ -55,9 +55,9 @@ function (dojo, declare) {
             console.log('gamedatas', gamedatas);
 
             this.suitNames = {
-                1: _('spades'),
-                2: _('hearts'),
-                3: _('clubs'),
+                1: _('red'),
+                2: _('blue'),
+                3: _('green'),
             };
 
             // Set dynamic UI strings
@@ -75,9 +75,15 @@ function (dojo, declare) {
             this.playerHand.setSelectionMode(1);
             this.playerHand.centerItems = true;
             this.playerHand.create(this, $('imp_myhand'), this.cardWidth, this.cardHeight);
-            this.playerHand.image_items_per_row = 9;
-            this.playerHand.onItemCreate = dojo.hitch(this, this.setupNewCard);
-            this.playerHand.jstpl_stock_item = '<div id="${id}" class="imp_card" style="top:${top}px;left:${left}px"></div>';
+            this.playerHand.image_items_per_row = 11;
+
+            this.rankToSpritesheet = {
+                '1': 1, '2': 2, '2.5': 3, '4': 4, '4.5': 5, '5': 6, '7': 7, '9': 8, '12': 9, '12.5': 10,
+                '15': 11, '18': 12, '18.5': 13, '22': 14, '22.5': 15, '25': 16, '28': 17, '28.5': 18, '3': 19, '6': 20, '6.5': 21,
+                '8': 22, '8.5': 23, '10': 24, '10.5': 25, '13': 26, '17': 27, '20': 28, '20.5': 29, '23': 30, '27': 31, '30': 32,
+                '30.5': 33, '32': 34, '32.5': 35, '35': 36, '11': 37, '14': 38, '14.5': 39, '16': 40, '16.5': 41, '21': 42, '24': 43,
+                '24.5': 44, '26': 45, '26.5': 46, '29': 47, '31': 48, '33': 49, '34': 50, '34.5': 51, '36': 52, '36.5': 53, '37': 54
+            };
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
@@ -116,7 +122,7 @@ function (dojo, declare) {
 
             // Create cards types
             for (let card of Object.values(gamedatas.cards)) {
-                this.playerHand.addItemType(card.rank, card.rank);
+                this.playerHand.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
             }
 
             // Cards in player's hand
@@ -153,7 +159,7 @@ function (dojo, declare) {
             for (i in this.gamedatas.cardsontable) {
                 var card = this.gamedatas.cardsontable[i];
                 var player_id = card.location_arg;
-                this.putCardOnTable(player_id, card.type_arg, card.id);
+                this.putCardOnTable(player_id, card.type_arg / 10, card.id);
             }
 
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -263,16 +269,6 @@ function (dojo, declare) {
             this.ajaxcall(`/bottleimp/bottleimp/${action}.html`, args, this, func, err);
         },
 
-        populateCardElement: function(card_div, rank) {
-            let card_info = this.gamedatas.cards[rank];
-            dojo.place(`<div class="imp_card_points">${card_info.points}</div>`, card_div);
-            dojo.place(`<div class="imp_card_main"><div class="imp_card_rank imp_suit_color_${card_info.suit}">${card_info.rank}</div><div class="imp_card_suit imp_card_suit_${card_info.suit}">&nbsp;</div></div>`, card_div);
-        },
-
-        setupNewCard: function(card_div, rank, card_id) {
-            this.populateCardElement(card_div, rank);
-        },
-
         /** Override this function to inject html for log items  */
 
         /* @Override */
@@ -303,9 +299,10 @@ function (dojo, declare) {
             for (let i in card_list) {
                 let card = card_list[i];
                 let suit = card.type;
-                let rank = card.type_arg;
+                let rank = card.type_arg / 10;
                 this.playerHand.addToStockWithId(rank, card.id);
             }
+            this.updateStockOverlap();
         },
 
         putCardOnTable: function(player_id, rank, card_id) {
@@ -313,7 +310,6 @@ function (dojo, declare) {
                 id: 'imp_cardontable_' + player_id,
                 class: 'imp_card imp_cardontable',
             }, 'imp_playertablecard_' + player_id);
-            this.populateCardElement(placedCard, rank);
             placedCard.dataset.card_id = card_id;
         },
 
@@ -346,11 +342,14 @@ function (dojo, declare) {
         },
 
         putPassCardOnTable: function(card_id, pass_type) {
-            let placedCard = dojo.create('div', {
-                id: 'imp_passcardontable_' + card_id,
-                class: 'imp_card imp_cardontable',
-            }, 'imp_passcard_' + pass_type);
-            this.populateCardElement(placedCard, this.gamedatas.cards_by_id[card_id]);
+            let spritePos = this.getSpriteXY(card_id);
+            let placedCard = dojo.place(
+                this.format_block( 'jstpl_cardontable', {
+                    x: spritePos.x,
+                    y: spritePos.y,
+                    id: 'imp_passcardontable_' + card_id,                
+                } ), 'imp_passcard_' + pass_type);
+            placedCard.style.zIndex = 100;
             placedCard.dataset.card_id = card_id;
         },
 
@@ -369,16 +368,17 @@ function (dojo, declare) {
             let elem_id = `imp_passcardontable_${card_id}`;
             this.putPassCardOnTable(card_id, pass_type);
             this.placeOnObject(elem_id, 'imp_myhand_item_' + card_id);
-            this.slideToObject(elem_id, 'imp_passcard_' + pass_type).play();
+            let anim = this.slideToObject(elem_id, 'imp_passcard_' + pass_type);
+            dojo.connect(anim, 'onEnd', (node) => {
+                node.style.zIndex = 1;
+            });
+            anim.play()
             this.playerHand.removeFromStockById(card_id);
             $(elem_id).onclick = (e) => {
-                // TODO: Broken
-                dojo.destroy(e);
+                // Will also onclick the box, which marks it as active. Call e.stopPropagation() to prevent.
+                dojo.destroy(e.target);
                 delete this.passCards[pass_type];
                 this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pass_type}`);
-
-                // TODO switch focus and undo confirm
-                // this.markActivePassBox(this.activePassType);
                 dojo.addClass('passCards_button', 'disabled');
             };
 
@@ -428,6 +428,30 @@ function (dojo, declare) {
                 e => e.classList.remove('imp_table_selected'));
             document.getElementById(`imp_pass_${pass_type}`).classList.add('imp_table_selected')
             // TODO: Change instruction label
+        },
+
+
+        // Copied from Tichu
+        // TODO: Call on window resize
+        updateStockOverlap: function() {
+            const availableWidthForOverlapPerItem =
+              (this.playerHand.container_div.clientWidth - (this.playerHand.item_width + this.playerHand.item_margin)) /
+              (this.playerHand.items.length - 1);
+            let overlap = Math.floor(
+              ((availableWidthForOverlapPerItem - this.playerHand.item_margin - 1) / this.playerHand.item_width) * 100
+            );
+            if (overlap > 60) overlap = 60;
+            if (overlap < 12) overlap = 12;
+            this.playerHand.setOverlap(overlap, 0);
+        },
+
+        getSpriteXY: function(card_id) {
+            let rank = this.gamedatas.cards_by_id[card_id];
+            let pos = this.rankToSpritesheet[this.gamedatas.cards_by_id[card_id]];
+            return {
+                x: this.cardWidth * (pos % 11),
+                y: this.cardHeight * Math.floor(pos / 11),
+            }
         },
 
         // /////////////////////////////////////////////////

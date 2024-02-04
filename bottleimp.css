@@ -43,6 +43,12 @@
 /********* You can start writing your CSS below this line: **********/
 /** Table layout **/
 
+:root {
+    --imp-card-width: 143px;
+    --imp-card-height: 200px;
+}
+
+
 #imp_centerarea {
     display: flex;
     align-items: center;
@@ -86,73 +92,13 @@
     outline-offset: -2px;
 }
 
-#imp_trumpSelector {
-    min-height: 130px;
-    display: inline-block;
-    vertical-align: middle;
-}
-
-#imp_trumpSelector > div {
-    display: flex;
-    align-items: center
-}
-
-#imp_trumpSelector > div > div {
-    height: 1em;
-    padding-top: 1em;
-    padding-bottom: 1em;
-}
-
-#imp_trumpSelector ul {
-    list-style-type: none;
-    overflow: hidden;
-}
-
-#imp_trumpSelector li {
-    float: left;
-    padding: 8px;
-    outline: 1px solid black;
-    outline-offset: -2px;
-    height: 32px;
-    width: 32px;
-    font-size: 40px;
-    text-align: center;
-    line-height: 32px;
-    margin-right: 10px;
-    user-select: none;
-    cursor: pointer;
-}
-
-#imp_rankSelector {
-    display: none;
-}
-
-#imp_suitSelector {
-    display: none;
-}
-
-#imp_suitSelector li {
-    background-size: 70%;
-}
-
-.imp_trump_indicator {
-    padding: 8px !important;
-    outline-offset: -2px;
-    height: 32px !important;
-    width: 32px !important;
-    font-size: 40px !important;
-    text-align: center;
-    line-height: 32px !important;
-    background-size: 70%;
-}
-
 .imp_playertablecard {
     display: inline-block;
     position: relative;
     margin-top: 5px;
     margin-bottom: 5px;
-    width: 93px;
-    height: 93px;
+    width: var(--imp-card-width);
+    height: var(--imp-card-height);
 }
 
 .imp_playertable_info {
@@ -174,8 +120,8 @@
     display: inline-block;
     position: relative;
     margin-top: 5px;
-    width: 93px;
-    height: 93px;
+    width: var(--imp-card-width);
+    height: var(--imp-card-height);
     padding-left: 5px;
     padding-right: 5px;
 }
@@ -187,6 +133,16 @@
 .imp_cardontable {
     position: absolute;
     z-index: 2;
+    width: var(--imp-card-width);
+    height: var(--imp-card-height);
+    background-image: url('img/cards.jpg'); 
+    border-radius: 6px;
+    box-shadow: 2px 2px 5px 3px #666;
+}
+
+.stockitem {
+    border-radius: 6px;
+    box-shadow: 2px 2px 5px 3px #666;
 }
 
 .imp_card {
@@ -194,29 +150,12 @@
     user-select: none;
     border-radius: 25%;
     box-shadow: 1px 1px 1px 1px black;
-    width: 93px;
-    height: 93px;
-    background-color: white;
-}
-
-.imp_card_points {
-    right: 15px;
-    position: absolute;
-}
-
-.imp_straw_more {
-    background-image: url('img/card_back.png');
-    width: 93px;
-    height: 93px;
-    position: absolute;
-    top: -7px;
-    left: -2px;
-    border-radius: 25%;
-    box-shadow: 1px 1px 1px 1px black;
+    width: var(--imp-card-width);
+    height: var(--imp-card-height);
 }
 
 #imp_myhand_wrap {
-    max-width: 800px;
+    max-width: 850px;
     margin: 10px auto;
 }
 
@@ -291,62 +230,3 @@
     background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmVyc2lvbj0iMS4wIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Im02NCAzMS40ODUgMjguOTAyIDM2LjEyOCAyOC45MDItMzYuMTI4LTcuMjI1NSA2NS4wM2gtMTAxLjE2bC03LjIyNTYtNjUuMDMgMjguOTAyIDM2LjEyOHoiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNzM1Ii8+PC9zdmc+Cg==");
 }
 
-.imp_card_main {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-direction: row;
-    justify-content: space-between;
-    font-family: 'Stint Ultra Condensed', sans-serif;
-    font-size: 69px;
-    width: 100%;
-    height: 100%;
-}
-
-.imp_card_main div {
-    flex: 1;
-    width: 100%;
-    margin: 0px;
-    text-align: center;
-    vertical-align: middle;
-}
-
-.imp_card_rank.imp_suit_color_1 {
-    color: #a691ae;
-}
-.imp_card_rank.imp_suit_color_2 {
-    color: #ff4d4d;
-}
-.imp_card_rank.imp_suit_color_3 {
-    color: #4db14c;
-}
-.imp_card_rank.imp_suit_color_4 {
-    color: #235fa4;
-}
-
-.imp_card_rank {
-    padding-left: 5px;
-}
-.imp_card_suit {
-    /* transform: translateX(-6.45px); */
-    background-position: center;
-    background-repeat: no-repeat;
-    /* background-size: 55.8px 46.5px; */
-    padding-right: 5px;
-}
-
-.imp_card_suit.imp_card_suit_1 {
-    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLSBDcmVhdGVkIHdpdGggSW5rc2NhcGUgKGh0dHA6Ly93d3cuaW5rc2NhcGUub3JnLykgLS0+Cjxzdmcgd2lkdGg9IjEwLjgyNG1tIiBoZWlnaHQ9IjEybW0iIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDEwLjgyNCAxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjYuNzk4IC01Ni43NDYpIj48cGF0aCBkPSJtMzIuMjEgNTYuNzQ2LTQuNzcyNyA1LjI5MTJoNC41N2UtNGEyLjcwNjEgMi41MzU5IDAgMCAwLTAuNjM5NzQgMS42MzcgMi43MDYxIDIuNTM1OSAwIDAgMCAyLjcwNjEgMi41MzU5IDIuNzA2MSAyLjUzNTkgMCAwIDAgMi4zNDY5LTEuMjc5N2wtMS4wOTExIDMuODE1NmgyLjkwMDRsLTEuMDg5OC0zLjgxMTVhMi43MDYxIDIuNTM1OSAwIDAgMCAyLjM0NTcgMS4yNzU2IDIuNzA2MSAyLjUzNTkgMCAwIDAgMi43MDYtMi41MzU5IDIuNzA2MSAyLjUzNTkgMCAwIDAtMC42Mzk3NC0xLjYzN2gzLjU5ZS00eiIgZmlsbD0iI2E2OTFhZSIgZmlsbC1vcGFjaXR5PSIuOTQxMTgiIHN0eWxlPSJwYWludC1vcmRlcjpub3JtYWwiLz48L2c+PC9zdmc+Cg==");
-}
-
-.imp_card_suit.imp_card_suit_2 {
-    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLSBDcmVhdGVkIHdpdGggSW5rc2NhcGUgKGh0dHA6Ly93d3cuaW5rc2NhcGUub3JnLykgLS0+Cjxzdmcgd2lkdGg9IjEwLjgyNG1tIiBoZWlnaHQ9IjEybW0iIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDEwLjgyNCAxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTA0LjYzIC0xODguNzkpIj48cGF0aCBkPSJtMTEwLjA0IDIwMC43OS01LjA0OTctOC4xOTYyIDJlLTMgLTYuNmUtNGEyLjcwNjEgMi41MzU5IDAgMCAxLTAuMzY1LTEuMjY3MyAyLjcwNjEgMi41MzU5IDAgMCAxIDIuNzA2LTIuNTM1OSAyLjcwNjEgMi41MzU5IDAgMCAxIDIuNzA2MSAyLjUzNTkgMi43MDYxIDIuNTM1OSAwIDAgMSAyLjcwNjEtMi41MzU5IDIuNzA2MSAyLjUzNTkgMCAwIDEgMi43MDYxIDIuNTM1OSAyLjcwNjEgMi41MzU5IDAgMCAxLTAuMzY1MDIgMS4yNjczbDJlLTMgNi42ZS00eiIgZmlsbD0iI2ZmNDI0MiIgZmlsbC1vcGFjaXR5PSIuOTQxMTgiIHN0eWxlPSJwYWludC1vcmRlcjpub3JtYWwiLz48L2c+PC9zdmc+Cg==");
-}
-
-.imp_card_suit.imp_card_suit_3 {
-    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLSBDcmVhdGVkIHdpdGggSW5rc2NhcGUgKGh0dHA6Ly93d3cuaW5rc2NhcGUub3JnLykgLS0+Cjxzdmcgd2lkdGg9IjEwLjgyNG1tIiBoZWlnaHQ9IjEybW0iIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDEwLjgyNCAxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtOTMuMzA5IC0xODguOTMpIj48cGF0aCBkPSJtOTguNzIxIDE4OC45M2MtMS4yMjQ4IDAtMi4yOTY4IDAuNzcwODktMi42MTM4IDEuODc5NS0wLjMxNjk4IDEuMTA4NyAwLjIwMDE2IDIuMjc4NiAxLjI2MDggMi44NTI0LTEuMDYwNy0wLjU3Mzg3LTIuNDAwNS0wLjQwODUyLTMuMjY2NSAwLjQwMzA1LTAuODY2MDQgMC44MTE2LTEuMDQyNCAyLjA2NzEtMC40Mjk5OSAzLjA2MTEgMC42MTI0MSAwLjk5Mzk4IDEuODYwOCAxLjQ3ODUgMy4wNDM5IDEuMTgxNSAwLjcxMjEtMC4xNzg4MyAxLjI5MzItMC42MTQxOCAxLjY0MzQtMS4xODI2bC0xLjA4NzkgMy44MDVoMi45MDAzbC0xLjA4OC0zLjgwNTNjMC4zNTAxMSAwLjU2ODU4IDAuOTMxMjYgMS4wMDQxIDEuNjQzNSAxLjE4MyAxLjE4MyAwLjI5NzAyIDIuNDMxNi0wLjE4NzU4IDMuMDQ0LTEuMTgxNSAwLjYxMjM4LTAuOTkzOTggMC40MzU5NS0yLjI0OTUtMC40MzAxMi0zLjA2MTEtMC44NjYwNC0wLjgxMTU5LTIuMjA1OC0wLjk3NjkzLTMuMjY2NS0wLjQwMzA2IDEuMDYwNy0wLjU3Mzg3IDEuNTc3OS0xLjc0MzggMS4yNjA5LTIuODUyNC0wLjMxNy0xLjEwODYtMS4zODkxLTEuODc5NS0yLjYxMzktMS44Nzk1eiIgZmlsbD0iIzRkYjE0YyIgZmlsbC1vcGFjaXR5PSIuOTQxMTgiIHN0eWxlPSJwYWludC1vcmRlcjpub3JtYWwiLz48L2c+PC9zdmc+Cg==");
-}
-
-.imp_card_suit.imp_card_suit_4 {
-    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLSBDcmVhdGVkIHdpdGggSW5rc2NhcGUgKGh0dHA6Ly93d3cuaW5rc2NhcGUub3JnLykgLS0+Cjxzdmcgd2lkdGg9IjEwLjgyNG1tIiBoZWlnaHQ9IjEybW0iIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDEwLjgyNCAxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjQ0Ljc5IC0xMjguNDEpIj48cGF0aCBkPSJtMjUwLjIgMTI4LjQxLTUuNDEyMSA2IDUuNDEyMSA2IDUuNDEyMS02eiIgZmlsbD0iIzIzNWZhNCIgZmlsbC1vcGFjaXR5PSIuOTQxMTgiIHN0eWxlPSJwYWludC1vcmRlcjpub3JtYWwiLz48L2c+PC9zdmc+Cg==");
-}

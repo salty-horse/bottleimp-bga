@@ -94,7 +94,8 @@ class BottleImp extends Table {
         foreach ($this->cards as $cardinfo) {
             if (count($players) <= 4 && !is_int($cardinfo['rank']))
                 continue;
-            $cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'], 'nbr' => 1];
+            // Turn float ranks to ints
+            $cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'] * 10, 'nbr' => 1];
         }
 
         $this->deck->createCards($cards, 'deck');
@@ -129,7 +130,8 @@ class BottleImp extends Table {
         $result = [
             'players' => [],
             'cards' => $this->cards,
-            'cards_by_id' => self::getCollectionFromDB("SELECT card_id id, card_type_arg FROM card", true ),
+            // Casting and +0 removes trailing zeroes
+            'cards_by_id' => self::getCollectionFromDB("SELECT card_id id, (CAST(card_type_arg/10 AS CHAR)+0) FROM card", true ),
         ];
 
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
@@ -243,7 +245,7 @@ class BottleImp extends Table {
         $cards = $this->deck->getCardsInLocation('scorepile');
         foreach ($cards as $card) {
             $player_id = $card['location_arg'];
-            $result[$player_id]['points'] += $this->$cards[$card['type_arg']]['points'];
+            $result[$player_id]['points'] += $this->$cards[$card['type_arg']/10]['points'];
             $pile_size_by_player[$player_id] += 1;
         }
 
@@ -337,7 +339,7 @@ class BottleImp extends Table {
             'card_id' => $card_id,
             'player_id' => $player_id,
             'player_name' => self::getActivePlayerName(),
-            'value' => $current_card['type_arg'],
+            'value' => $current_card['type_arg']/10,
             'suit_id' => $current_card['type'],
             'suit' => $this->getSuitLogName($current_card),
         ]);
@@ -447,6 +449,7 @@ class BottleImp extends Table {
         $points = 0;
 
         foreach ($cards_on_table as $card) {
+            $card['type_arg'] /= 10;
             if ($card['type_arg'] < $bottle_info['price']) {
                 if (!$max_card_below_price || $card['type_arg'] >= $max_card_below_price['type_arg']) {
                     $max_card_below_price = $card;
@@ -476,7 +479,7 @@ class BottleImp extends Table {
         // Update bottle
         $new_price = 0;
         if ($bottle_id) {
-            $new_price = floatval($card['type_arg']);
+            $new_price = floatval($winning_card['type_arg']);
             self::DbQuery("UPDATE bottles SET owner='$winning_player', price=$new_price WHERE id=$bottle_id");
         }
 
@@ -538,6 +541,7 @@ class BottleImp extends Table {
         $devil_points = 0;
         $devil_cards_display = [];
         foreach ($center_cards as $card) {
+            $card['type_arg'] /= 10;
             $devil_points = $this->$cards[$card['type_arg']]['points'];
             $suit_display = $this->getSuitLogName($card);
             $devil_cards_display[] = "{$card['type_arg']}$suit_display";
@@ -618,7 +622,7 @@ class BottleImp extends Table {
 
         $row = [clienttranslate('Round score')];
         foreach ($players as $player_id => $player) {
-            $row[] = $score_piles[$player_id]['points'] + $gift_cards_by_player[$player_id]['type_arg'];
+            $row[] = $score_piles[$player_id]['points'];
         }
         $scoreTable[] = $row;
 
