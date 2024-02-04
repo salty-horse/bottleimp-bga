@@ -77,7 +77,7 @@ function (dojo, declare) {
             this.playerHand.create(this, $('imp_myhand'), this.cardWidth, this.cardHeight);
             this.playerHand.image_items_per_row = 9;
             this.playerHand.onItemCreate = dojo.hitch(this, this.setupNewCard);
-            this.playerHand.jstpl_stock_item = '<div id="${id}" class="imp_card"></div>';
+            this.playerHand.jstpl_stock_item = '<div id="${id}" class="imp_card" style="top:${top}px;left:${left}px"></div>';
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
@@ -372,10 +372,10 @@ function (dojo, declare) {
             this.slideToObject(elem_id, 'imp_passcard_' + pass_type).play();
             this.playerHand.removeFromStockById(card_id);
             $(elem_id).onclick = (e) => {
+                // TODO: Broken
                 dojo.destroy(e);
                 delete this.passCards[pass_type];
-                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passCards`);
-                // this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pass_type}`);
+                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pass_type}`);
 
                 // TODO switch focus and undo confirm
                 // this.markActivePassBox(this.activePassType);
