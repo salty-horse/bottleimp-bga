@@ -195,11 +195,11 @@ function (dojo, declare) {
                 if (this.isSpectator)
                     break;
                 document.getElementById('imp_passCards').style.display = 'flex';
+                this.showCenterPassBox(true);
                 if (this.isCurrentPlayerActive()) {
                     this.markActivePassBox('left');
                 } else {
-                    // Hide center boxes to prepare for receiving cards
-                    this.hideCenterPassBox();
+                    this.showCenterPassBox(false);
                     for (let player_id of this.playersPassedCards) {
                         this.showPassedCardBack(player_id);
                     }
@@ -413,8 +413,8 @@ function (dojo, declare) {
             }
         },
 
-        hideCenterPassBox: function() {
-            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.display = 'none');
+        showCenterPassBox: function(show) {
+            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.display = show ? 'block' : 'none');
             this.markActivePassBox();
         },
 
@@ -552,8 +552,8 @@ function (dojo, declare) {
 
             dojo.subscribe('newHand', this, 'notif_newHand');
             dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
-            dojo.subscribe('passCardPrivate', this, 'notif_passCardPrivate');
-            dojo.subscribe('passCard', this, 'notif_passCard');
+            dojo.subscribe('passCardsPrivate', this, 'notif_passCardsPrivate');
+            dojo.subscribe('passCards', this, 'notif_passCards');
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
             dojo.subscribe('trickWin', this, 'notif_trickWin');
@@ -581,9 +581,12 @@ function (dojo, declare) {
             this.initPlayerHand(notif.args.hand_cards);
         },
 
-        notif_passCardPrivate: function(notif) {
+        notif_passCardsPrivate: function(notif) {
             this.unmarkPlayableCards();
-            this.hideCenterPassBox();
+            this.showCenterPassBox(false);
+            for (let player_id of this.playersPassedCards) {
+                this.showPassedCardBack(player_id);
+            }
 
             // Fade out passed cards
             for (let pos of this.passKeys) {
@@ -593,8 +596,9 @@ function (dojo, declare) {
             // Hand size is decreased in notif_passCard
         },
 
-        notif_passCard: function(notif) {
-            this.handSizes[notif.args.player_id].incValue(this.gamedatas.playerorder.length == 2 ? -4 : -3);
+        notif_passCards: function(notif) {
+            if (notif.args.player_id != this.player_id)
+                this.handSizes[notif.args.player_id].incValue(this.gamedatas.playerorder.length == 2 ? -4 : -3);
             if (this.passPlayers[notif.args.player_id]) {
                 if (this.isCurrentPlayerActive()) {
                     // Remember this player passed and animate later

@@ -419,8 +419,8 @@ class BottleImp extends Table {
     function stTakePassedCards() {
         $players = self::loadPlayersBasicInfos();
         foreach ($players as $player_id => $player) {
-            $cards = $this->cards->getCardsInLocation('pass', $player_id );
-            $this->cards->moveAllCardsInLocation('pass', 'hand', $player_id, $player_id);
+            $cards = $this->deck->getCardsInLocation('pass', $player_id);
+            $this->deck->moveAllCardsInLocation('pass', 'hand', $player_id, $player_id);
 
             self::notifyPlayer($player_id, 'takePassedCards', '', [
                 'cards' => $cards
