@@ -160,6 +160,10 @@ class BottleImp extends Table {
             $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
         }
 
+        if ($this->gamestate->state()['name'] == 'passCards') {
+            $result['players_yet_to_pass_cards'] = $this->gamestate->getActivePlayerList();
+        }
+
         return $result;
     }
 

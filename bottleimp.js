@@ -96,16 +96,19 @@ function (dojo, declare) {
             this.activePassType = null;
             this.passCards = {};
             dojo.query('.imp_pass').on('click', (e) => {
+                if (!this.isCurrentPlayerActive())
+                    return;
                 this.markActivePassBox(e.currentTarget.dataset.passType);
             });
 
             // The player order array mixes strings and numbers
             let playerorder = gamedatas.playerorder.map(x => parseInt(x));
             let playerPos = playerorder.indexOf(this.player_id);
-            let passTitles = {
-                'left': playerorder[(playerPos + 1) % playerorder.length],
-                'right': playerorder[(playerPos == 0 ? playerorder.length : playerPos) - 1],
-            };
+
+            this.playersPassedCards = [];
+            this.passPlayers = {};
+            this.passPlayers[playerorder[(playerPos + 1) % playerorder.length]] = 'left';
+            this.passPlayers[playerorder[(playerPos == 0 ? playerorder.length : playerPos) - 1]] = 'right';
             document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = _("Devil's Trick");
             // TODO: Are tooltips necessary?
             // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
@@ -117,11 +120,15 @@ function (dojo, declare) {
                 this.passKeys = ['left', 'center', 'right'];
             }
 
-            for (let k in passTitles) {
-                let player_info = gamedatas.players[passTitles[k]];
-                document.querySelector(`#imp_pass_${k} > .imp_playertablename`).innerHTML = dojo.string.substitute(
+            for (let [player_id, pos] of Object.entries(this.passPlayers)) {
+                let player_info = gamedatas.players[player_id];
+                document.querySelector(`#imp_pass_${pos} > .imp_playertablename`).innerHTML = dojo.string.substitute(
                     "${player_name}",
                     {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
+
+                if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id) == -1) {
+                    this.playersPassedCards.push(player_id);
+                }
             }
 
             // Create cards types
@@ -188,10 +195,15 @@ function (dojo, declare) {
                 if (this.isSpectator)
                     break;
                 document.getElementById('imp_passCards').style.display = 'flex';
+                // TODO: Move to onUpdateActionButtons
                 if (this.isCurrentPlayerActive()) {
                     this.markActivePassBox('left');
                 } else {
-                    // TODO: Hide center boxes to prepare for receiving cards
+                    // Hide center boxes to prepare for receiving cards
+                    this.hideCenterPassBox();
+                    for (let player_id of this.playersPassedCards) {
+                        this.showPassedCardBack(player_id);
+                    }
                 }
                 break;
             // Mark playable cards
@@ -225,8 +237,12 @@ function (dojo, declare) {
         //
         onLeavingState: function(stateName)
         {
-            // switch (stateName) {
-            // }
+            switch (stateName) {
+            case 'passCards':
+                this.passCards = {};
+                this.playersPassedCards = [];
+                break;
+            }
         },
 
         // onUpdateActionButtons: in this method you can manage 'action buttons' that are displayed in the
@@ -346,11 +362,11 @@ function (dojo, declare) {
         putPassCardOnTable: function(card_id, pass_type) {
             let spritePos = this.getSpriteXY(card_id);
             let placedCard = dojo.place(
-                this.format_block( 'jstpl_cardontable', {
+                this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
-                    id: 'imp_passcardontable_' + card_id,                
-                } ), 'imp_passcard_' + pass_type);
+                    id: `imp_passcardontable_${card_id}`,
+                } ), `imp_passcard_${pass_type}`);
             placedCard.style.zIndex = 100;
             placedCard.dataset.card_id = card_id;
         },
@@ -398,6 +414,24 @@ function (dojo, declare) {
             }
         },
 
+        hideCenterPassBox: function() {
+            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.display = 'none');
+            this.markActivePassBox();
+        },
+
+        showPassedCardBack: function(player_id) {
+            let pass_type = this.passPlayers[player_id];
+            if (!pass_type)
+                return;
+            dojo.place(
+                this.format_block('jstpl_cardontable', {
+                    x: 0,
+                    y: 0,
+                    id: `imp_passcardontable_${pass_type}`,
+                } ), `imp_passcard_${pass_type}`);
+            dojo.fadeIn(`imp_passcardontable_${pass_type}`);
+        },
+
         markActivePlayerTable: function(turn_on, player_id) {
             if (!player_id) {
                 player_id = this.getActivePlayerId();
@@ -424,12 +458,13 @@ function (dojo, declare) {
         },
 
         markActivePassBox: function(pass_type) {
-            this.activePassType = pass_type;
-
             document.querySelectorAll('#imp_passCards .imp_table_selected').forEach(
                 e => e.classList.remove('imp_table_selected'));
-            document.getElementById(`imp_pass_${pass_type}`).classList.add('imp_table_selected')
-            // TODO: Change instruction label
+            if (pass_type) {
+                this.activePassType = pass_type;
+                document.getElementById(`imp_pass_${pass_type}`).classList.add('imp_table_selected')
+                // TODO: Change instruction label
+            }
         },
 
 
@@ -518,8 +553,8 @@ function (dojo, declare) {
 
             dojo.subscribe('newHand', this, 'notif_newHand');
             dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
-            dojo.subscribe('giftCardPrivate', this, 'notif_giftCardPrivate');
-            dojo.subscribe('giftCard', this, 'notif_giftCard');
+            dojo.subscribe('passCardPrivate', this, 'notif_passCardPrivate');
+            dojo.subscribe('passCard', this, 'notif_passCard');
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
             dojo.subscribe('trickWin', this, 'notif_trickWin');
@@ -547,16 +582,28 @@ function (dojo, declare) {
             this.initPlayerHand(notif.args.hand_cards);
         },
 
-        notif_giftCardPrivate: function(notif) {
+        notif_passCardPrivate: function(notif) {
             this.unmarkPlayableCards();
+            this.hideCenterPassBox();
 
-            this.playerHand.removeFromStockById(notif.args.card);
+            // Fade out passed cards
+            for (let pos of this.passKeys) {
+                this.fadeOutAndDestroy(document.querySelector(`#imp_passcard_${pos} > div`));
+            }
 
-            // Hand size is decreased in notif_giftCard
+            // Hand size is decreased in notif_passCard
         },
 
-        notif_giftCard: function(notif) {
-            this.handSizes[notif.args.player_id].incValue(-1);
+        notif_passCard: function(notif) {
+            this.handSizes[notif.args.player_id].incValue(this.gamedatas.playerorder.length == 2 ? -4 : -3);
+            if (this.passPlayers[notif.args.player_id]) {
+                if (this.isCurrentPlayerActive()) {
+                    // Remember this player passed and animate later
+                    this.playersPassedCards.push(notif.args.player_id);
+                } else {
+                    this.showPassedCardBack(notif.args.player_id);
+                }
+            }
         },
 
         notif_playCard: function(notif) {
