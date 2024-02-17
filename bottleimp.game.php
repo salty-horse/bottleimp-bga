@@ -396,6 +396,9 @@ class BottleImp extends Table {
         foreach ($players as $player_id => $player) {
             $hand_cards = $this->deck->pickCards($hand_size, 'deck', $player_id);
             self::notifyPlayer($player_id, 'newHand', '', ['hand_cards' => $hand_cards]);
+
+            // Give time before multiactive state
+            self::giveExtraTime($player_id);
         }
 
         // Notify both players about the public strawmen, first player, and first picker
@@ -403,8 +406,7 @@ class BottleImp extends Table {
             'hand_size' => $hand_size,
         ]);
 
-        self::giveExtraTime(self::getActivePlayerId());
-
+        $this->gamestate->setAllPlayersMultiactive();
         $this->gamestate->nextState();
     }
 

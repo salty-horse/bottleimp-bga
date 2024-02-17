@@ -89,7 +89,6 @@ $machinestates = [
         'description' => clienttranslate('Other players must select cards to pass'),
         'descriptionmyturn' => clienttranslate('${you} must select cards to pass'),
         'type' => 'multipleactiveplayer',
-        'action' => 'stMakeEveryoneActive',
         'possibleactions' => ['passCards'],
         'transitions' => [
             '' => STATE_TAKE_PASSED_CARDS,

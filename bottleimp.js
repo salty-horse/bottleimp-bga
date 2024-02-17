@@ -195,7 +195,6 @@ function (dojo, declare) {
                 if (this.isSpectator)
                     break;
                 document.getElementById('imp_passCards').style.display = 'flex';
-                // TODO: Move to onUpdateActionButtons
                 if (this.isCurrentPlayerActive()) {
                     this.markActivePassBox('left');
                 } else {
