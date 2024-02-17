@@ -13,6 +13,9 @@
  *
  */
 
+/* global define, ebg, _, $, g_gamethemeurl */
+/* eslint no-unused-vars: ["error", {args: "none"}] */
+
 'use strict';
 
 define([
@@ -73,7 +76,8 @@ function (dojo, declare) {
             // Player hand
             this.playerHand = new ebg.stock();
             this.playerHand.setSelectionMode(1);
-            this.playerHand.centerItems = true;
+            this.playerHand.centerItems = false;
+            this.playerHand.autowidth = true;
             this.playerHand.create(this, $('imp_myhand'), this.cardWidth, this.cardHeight);
             this.playerHand.image_items_per_row = 11;
 
@@ -156,7 +160,7 @@ function (dojo, declare) {
             this.addTooltipToClass('imp_hand_size', _('Number of cards in hand'), '');
 
             // Cards played on table
-            for (i in this.gamedatas.cardsontable) {
+            for (let i in this.gamedatas.cardsontable) {
                 var card = this.gamedatas.cardsontable[i];
                 var player_id = card.location_arg;
                 this.putCardOnTable(player_id, card.type_arg / 10, card.id);
@@ -221,8 +225,8 @@ function (dojo, declare) {
         //
         onLeavingState: function(stateName)
         {
-            switch (stateName) {
-            }
+            // switch (stateName) {
+            // }
         },
 
         // onUpdateActionButtons: in this method you can manage 'action buttons' that are displayed in the
@@ -233,7 +237,7 @@ function (dojo, declare) {
             if (this.isCurrentPlayerActive()) {
                 switch(stateName) {
                 case 'passCards':
-                    this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
+                    // TODO: this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
                     this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
                     dojo.addClass('passCards_button', 'disabled');
                     break;
@@ -256,16 +260,15 @@ function (dojo, declare) {
                 args = [];
             }
             delete args.action;
-            if (!args.hasOwnProperty('lock') || args.lock) {
+            if (!Object.hasOwn(args, 'lock') || args.lock) {
                 args.lock = true;
             } else {
                 delete args.lock;
             }
             if (typeof func == 'undefined' || func == null) {
-                func = result => {};
+                func = () => {};
             }
 
-            let name = this.game_name;
             this.ajaxcall(`/bottleimp/bottleimp/${action}.html`, args, this, func, err);
         },
 
@@ -292,13 +295,12 @@ function (dojo, declare) {
         getSuitDiv: function (suit_symbol) {
             let suit_id = this.suitSymbolToId[suit_symbol];
             let suit_name = this.suitNames[suit_id];
-            return `<div role=\"img\" title=\"${suit_name}\" aria-label=\"${suit_name}\" class=\"imp_log_suit imp_suit_icon_${suit_id}\"></div>`;
+            return `<div role="img" title="${suit_name}" aria-label="${suit_name}" class="imp_log_suit imp_suit_icon_${suit_id}"></div>`;
         },
 
         initPlayerHand: function(card_list) {
             for (let i in card_list) {
                 let card = card_list[i];
-                let suit = card.type;
                 let rank = card.type_arg / 10;
                 this.playerHand.addToStockWithId(rank, card.id);
             }
@@ -446,7 +448,6 @@ function (dojo, declare) {
         },
 
         getSpriteXY: function(card_id) {
-            let rank = this.gamedatas.cards_by_id[card_id];
             let pos = this.rankToSpritesheet[this.gamedatas.cards_by_id[card_id]];
             return {
                 x: this.cardWidth * (pos % 11),
@@ -565,7 +566,7 @@ function (dojo, declare) {
             this.playCardOnTable(notif.args.player_id, notif.args.value, notif.args.card_id);
         },
 
-        notif_trickWin: function(notif) {
+        notif_trickWin: function() {
             // We do nothing here (just wait in order players can view the cards played before they're gone
         },
 
