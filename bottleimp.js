@@ -358,16 +358,17 @@ function (dojo, declare) {
             this.slideToObject('imp_cardontable_' + player_id, 'imp_playertablecard_' + player_id).play();
         },
 
-        putPassCardOnTable: function(card_id, pass_type) {
+        putPassCardOnTable: function(card_id, pass_type, id) {
             let spritePos = this.getSpriteXY(card_id);
             let placedCard = dojo.place(
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
-                    id: `imp_passcardontable_${card_id}`,
+                    id: id ? id : `imp_passcardontable_${card_id}`,
                 } ), `imp_passcard_${pass_type}`);
             placedCard.style.zIndex = 100;
             placedCard.dataset.card_id = card_id;
+            return placedCard;
         },
 
         playPassCard: function(card_id) {
@@ -414,7 +415,7 @@ function (dojo, declare) {
         },
 
         showCenterPassBox: function(show) {
-            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.display = show ? 'block' : 'none');
+            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.visibility = show ? 'visible' : 'hidden');
             this.markActivePassBox();
         },
 
@@ -422,13 +423,16 @@ function (dojo, declare) {
             let pass_type = this.passPlayers[player_id];
             if (!pass_type)
                 return;
-            dojo.place(
+            let elem = dojo.place(
                 this.format_block('jstpl_cardontable', {
                     x: 0,
                     y: 0,
                     id: `imp_passcardontable_${pass_type}`,
                 } ), `imp_passcard_${pass_type}`);
-            dojo.fadeIn(`imp_passcardontable_${pass_type}`);
+            if (!this.instantaneousMode) {
+                elem.style.opacity = 0;
+                dojo.fadeIn({node: elem, duration: 500}).play();
+            }
         },
 
         markActivePlayerTable: function(turn_on, player_id) {
@@ -553,10 +557,15 @@ function (dojo, declare) {
             dojo.subscribe('newHand', this, 'notif_newHand');
             dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
             dojo.subscribe('passCardsPrivate', this, 'notif_passCardsPrivate');
+            this.notifqueue.setSynchronous('passCardsPrivate');
             dojo.subscribe('passCards', this, 'notif_passCards');
+            this.notifqueue.setSynchronous('passCards');
+            dojo.subscribe('takePassedCards', this, 'notif_takePassedCards');
+            this.notifqueue.setSynchronous('takePassedCards');
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
             dojo.subscribe('trickWin', this, 'notif_trickWin');
+            this.notifqueue.setSynchronous('trickWin', 1000);
             dojo.subscribe('giveAllCardsToPlayer', this, 'notif_giveAllCardsToPlayer');
             this.notifqueue.setSynchronous('giveAllCardsToPlayer', 1000);
             dojo.subscribe('endHand', this, 'notif_endHand');
@@ -592,8 +601,7 @@ function (dojo, declare) {
             for (let pos of this.passKeys) {
                 this.fadeOutAndDestroy(document.querySelector(`#imp_passcard_${pos} > div`));
             }
-
-            // Hand size is decreased in notif_passCard
+            this.notifqueue.setSynchronousDuration(0);
         },
 
         notif_passCards: function(notif) {
@@ -607,6 +615,30 @@ function (dojo, declare) {
                     this.showPassedCardBack(notif.args.player_id);
                 }
             }
+            this.notifqueue.setSynchronousDuration(0);
+        },
+
+        notif_takePassedCards: function(notif) {
+            for (let pos of ['left', 'right']) {
+                let card_id = notif.args[`card_id_${pos}`];
+                this.fadeOutAndDestroy(`imp_passcardontable_${pos}`);
+                let reveal_id = `imp_passcardreveal_${pos}`;
+                let elem = this.putPassCardOnTable(card_id, pos, reveal_id);
+                if (!this.instantaneousMode) {
+                    elem.style.opacity = 0;
+                    dojo.fadeIn({node: elem, duration: 500}).play();
+                }
+            }
+            setTimeout(() => {
+                for (let pos of ['left', 'right']) {
+                    let card_id = notif.args[`card_id_${pos}`];
+                    let reveal_id = `imp_passcardreveal_${pos}`;
+                    dojo.destroy(reveal_id);
+                    this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);
+                }
+                this.notifqueue.setSynchronousDuration(0);
+            },
+            this.instantaneousMode ? 0 : 1000);
         },
 
         notif_playCard: function(notif) {
@@ -617,7 +649,7 @@ function (dojo, declare) {
         },
 
         notif_trickWin: function() {
-            // We do nothing here (just wait in order players can view the cards played before they're gone
+            // We do nothing here (just wait so players can view the cards played before they're gone)
         },
 
         notif_giveAllCardsToPlayer: function(notif) {

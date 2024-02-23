@@ -287,6 +287,7 @@ class BottleImp extends Table {
         if ($center2) {
             $passed_cards[] = [$center2];
         }
+        $cards_center = array_slice($passed_cards, 2);
 
         if (count(array_unique($passed_cards)) != count($passed_cards))
             throw new BgaUserException(self::_('You must unique cards'));
@@ -299,17 +300,28 @@ class BottleImp extends Table {
             throw new BgaUserException(self::_('You do not have this card'));
         }
 
-        $this->deck->moveCard($left, 'pass', self::getPlayerAfter($player_id));
-        $this->deck->moveCard($right, 'pass', self::getPlayerBefore($player_id));
+        $left_player_id = self::getPlayerAfter($player_id);
+        $right_player_id = self::getPlayerBefore($player_id);
+        $this->deck->moveCard($left, 'pass_from_right', $left_player_id);
+        $this->deck->moveCard($right, 'pass_from_left', $right_player_id);
         $this->deck->moveCard($center, 'center');
         if ($center2) {
             $this->deck->moveCard($center2, 'center');
         }
 
-        self::notifyPlayer($player_id, 'passCardsPrivate', '', ['cards' => $passed_cards]);
+        self::notifyPlayer($player_id, 'passCardsPrivate', 'You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick', [
+            'cards' => $passed_cards,
+            'card_left' => $cards_in_hand[$passed_cards[0]]['type_arg']/10,
+            'card_right' => $cards_in_hand[$passed_cards[1]]['type_arg']/10,
+            'card_center' => $cards_in_hand[$passed_cards[2]]['type_arg']/10,
+            // 'cards_center' => implode(', ', array_slice($cards_center, 2)), // For 2 players
+            'player_name1' => self::getPlayerNameById($left_player_id),
+            'player_name2' => self::getPlayerNameById($right_player_id),
+        ]);
         self::notifyAllPlayers('passCards', clienttranslate('${player_name} selected cards to pass'), [
             'player_id' => $player_id,
-            'player_name' => self::getPlayerNameById($player_id) ]);
+            'player_name' => self::getPlayerNameById($player_id),
+        ]);
         $this->gamestate->setPlayerNonMultiactive($player_id, '');
     }
 
@@ -419,11 +431,20 @@ class BottleImp extends Table {
     function stTakePassedCards() {
         $players = self::loadPlayersBasicInfos();
         foreach ($players as $player_id => $player) {
-            $cards = $this->deck->getCardsInLocation('pass', $player_id);
-            $this->deck->moveAllCardsInLocation('pass', 'hand', $player_id, $player_id);
+            $left_player_id = self::getPlayerAfter($player_id);
+            $right_player_id = self::getPlayerBefore($player_id);
+            $card_from_left = $this->deck->getCardsInLocation('pass_from_left', $player_id);
+            $card_from_right = $this->deck->getCardsInLocation('pass_from_right', $player_id);
+            $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
+            $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
 
-            self::notifyPlayer($player_id, 'takePassedCards', '', [
-                'cards' => $cards
+            self::notifyPlayer($player_id, 'takePassedCards', 'You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}', [
+                'card_id_left' => array_keys($card_from_left)[0],
+                'card_id_right' => array_keys($card_from_right)[0],
+                'card_left' => array_values($card_from_left)[0]['type_arg']/10,
+                'card_right' => array_values($card_from_right)[0]['type_arg']/10,
+                'player_name1' => self::getPlayerNameById($left_player_id),
+                'player_name2' => self::getPlayerNameById($right_player_id),
             ]);
         }
 

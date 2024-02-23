@@ -148,7 +148,7 @@
 .imp_card {
     cursor: default !important;
     user-select: none;
-    border-radius: 25%;
+    border-radius: 6px;
     box-shadow: 1px 1px 1px 1px black;
     width: var(--imp-card-width);
     height: var(--imp-card-height);
@@ -166,7 +166,6 @@
 .imp_playable {
     cursor: pointer !important;
     box-shadow: 1px 1px 1px 1px black, 0px 0px 3px 3px yellow;
-    border-radius: 25%;
 }
 
 .imp_hand_size {
