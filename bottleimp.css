@@ -152,6 +152,8 @@
     position: absolute;
     bottom: 0;
     right: 0;
+    width: var(--imp-bottle-width);
+    height: var(--imp-bottle-height);
 }
 
 .imp_cardontable {

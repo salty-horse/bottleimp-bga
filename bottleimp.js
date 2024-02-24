@@ -711,12 +711,19 @@ function (dojo, declare) {
                     bottle_info.price = notif.args.price;
                     bottle_elem.textContent = notif.args.price;
                     document.getElementById('imp_max_bottle_price').textContent =
-                        Math.max(...this.gamedatas.bottles.map(b => b.price), 0);
+                        Math.max(...Object.values(this.gamedatas.bottles).map(b => b.price), 0);
                 }
 
                 if (winner_id != bottle_info.owner) {
                     bottle_info.owner = winner_id;
-                    this.slideToObject(bottle_elem, `imp_bottle_slot_${winner_id}`);
+                    let target_elem = document.getElementById(`imp_bottle_slot_${winner_id}`);
+                    let anim = this.slideToObject(bottle_elem, target_elem);
+                    dojo.connect(anim, 'onEnd', () => {
+                        bottle_elem.remove()
+                        bottle_elem.style.top = bottle_elem.style.left = 0;
+                        target_elem.appendChild(bottle_elem);
+                    });
+                    anim.play()
                 }
             }
 
