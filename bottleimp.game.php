@@ -150,6 +150,7 @@ class BottleImp extends Table {
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
         $result['totalRounds'] = count($result['players']) * $this->getGameStateValue('roundsPerPlayer');
         $result['firstPlayer'] = $this->getGameStateValue('firstPlayer');
+        $result['dealer'] = $this->getDealer();
 
         $score_piles = $this->getScorePiles();
 
@@ -259,6 +260,10 @@ class BottleImp extends Table {
         return $result;
     }
 
+    function getDealer() {
+        return self::getPlayerBefore(self::getGameStateValue('firstPlayer'));
+    }
+
     const SUIT_SYMBOLS = ['♠', '♥', '♣'];
     function getSuitLogName($card) {
         return self::SUIT_SYMBOLS[$card['type'] - 1];
@@ -273,18 +278,36 @@ class BottleImp extends Table {
      */
     function passCards($left, $right, $center, $center2) {
         $player_id = self::getCurrentPlayerId();
-        $this->passCardsFromPlayer($left, $right, $center, $center2, $player_id);
+        $this->passCardsFromPlayer($player_id, $left, $right, $center, $center2);
     }
 
-    function passCardsFromPlayer($left, $right, $center, $center2, $player_id) {
+    function passCardsFromPlayer($player_id, $left, $right, $center, $center2) {
         self::checkAction('passCards');
 
         if ($center2 && count($players) != 2)
             throw new BgaUserException(self::_('You must pass 3 cards'));
 
+        // TODO - support 2 players
+        // TODO - modify for when the dealer doesn't discard to the devil's trick in 5 players
+
+        // In 5-player mode, the dealer doesn't pass to the center
+        $player_count = self::getUniqueValueFromDB('select count(*) from player');
+        $pass_two = false;
+        if ($player_count == 5 && $player_id == $this->getDealer()) {
+            $pass_two = true;
+            if ($center)
+                throw new BgaUserException(self::_('You must not pass the center card'));
+        } else {
+            if (!$center)
+                throw new BgaUserException(self::_('You must pass the center card'));
+        }
+
         $passed_cards = [$left, $right, $center];
-        if ($center2) {
-            $passed_cards[] = [$center2];
+        if ($center) {
+            $passed_cards[] = [$center];
+            if ($center2) {
+                $passed_cards[] = [$center2];
+            }
         }
         $cards_center = array_slice($passed_cards, 2);
 
@@ -294,7 +317,7 @@ class BottleImp extends Table {
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (!in_array($left, array_keys($cards_in_hand)) ||
             !in_array($right, array_keys($cards_in_hand)) ||
-            !in_array($center, array_keys($cards_in_hand)) ||
+            ($center && !in_array($center, array_keys($cards_in_hand))) ||
             ($center2 && !in_array($center2, array_keys($cards_in_hand)))) {
             throw new BgaUserException(self::_('You do not have this card'));
         }
@@ -308,15 +331,26 @@ class BottleImp extends Table {
             $this->deck->moveCard($center2, 'center');
         }
 
-        self::notifyPlayer($player_id, 'passCardsPrivate', 'You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick', [
+        $pass_notify_args = [
             'cards' => $passed_cards,
             'card_left' => $cards_in_hand[$passed_cards[0]]['type_arg']/10,
             'card_right' => $cards_in_hand[$passed_cards[1]]['type_arg']/10,
-            'card_center' => $cards_in_hand[$passed_cards[2]]['type_arg']/10,
-            // 'cards_center' => implode(', ', array_slice($cards_center, 2)), // For 2 players
             'player_name1' => self::getPlayerNameById($left_player_id),
             'player_name2' => self::getPlayerNameById($right_player_id),
-        ]);
+        ];
+
+        if ($pass_two) {
+            $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, and ${card_right} to ${player_name2}');
+        } else {
+            $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick');
+            if ($pass_four) {
+                $pass_notify_args['cards_center'] = implode(', ', array_slice($cards_center, 2));
+            } else {
+                $pass_notify_args['cards_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
+            }
+        }
+
+        self::notifyPlayer($player_id, 'passCardsPrivate', $notif_message, $pass_notify_args);
         self::notifyAllPlayers('passCards', clienttranslate('${player_name} selected cards to pass'), [
             'player_id' => $player_id,
             'player_name' => self::getPlayerNameById($player_id),
@@ -327,13 +361,13 @@ class BottleImp extends Table {
     function playCard($card_id) {
         self::checkAction('playCard');
         $player_id = self::getActivePlayerId();
-        $this->playCardFromPlayer($card_id, $player_id);
+        $this->playCardFromPlayer($player_id, $card_id);
 
         // Next player
         $this->gamestate->nextState();
     }
 
-    function playCardFromPlayer($card_id, $player_id) {
+    function playCardFromPlayer($player_id, $card_id) {
         $current_card = $this->deck->getCard($card_id);
 
         // Sanity check. A more thorough check is done later.
@@ -397,25 +431,33 @@ class BottleImp extends Table {
         // Deal cards
         $players = self::loadPlayersBasicInfos();
         $player_count = count($players);
+        $dealer = $this->getDealer();
         if ($player_count == 2) {
             $hand_size = 12;
         } else if ($player_count == 3 || $player_count == 4) {
             $hand_size = 36 / $player_count;
+        } else if ($player_count == 5) {
+            $hand_size = 55 / $player_count;
         } else {
             $hand_size = 54 / $player_count;
         }
         foreach ($players as $player_id => $player) {
-            $hand_cards = $this->deck->pickCards($hand_size, 'deck', $player_id);
+            if ($player_count == 5 && $player_id == $dealer) {
+                $real_hand_size = $hand_size;
+            } else {
+                $real_hand_size = $hand_size - 1;
+            }
+            $hand_cards = $this->deck->pickCards($real_hand_size, 'deck', $player_id);
             self::notifyPlayer($player_id, 'newHand', '', ['hand_cards' => $hand_cards]);
 
             // Give time before multiactive state
             self::giveExtraTime($player_id);
         }
 
-        // TODO: Add new dealer
         self::notifyAllPlayers('newHandPublic', '', [
-            'hand_size' => $hand_size,
+            'hand_size' => $hand_size,  // 5-player exception handled in JS
             'round_number' => $round_number,
+            'dealer' => $dealer,
         ]);
 
         $this->gamestate->setAllPlayersMultiactive();
@@ -438,7 +480,7 @@ class BottleImp extends Table {
             $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
             $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
 
-            self::notifyPlayer($player_id, 'takePassedCards', 'You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}', [
+            self::notifyPlayer($player_id, 'takePassedCards', clienttranslate('You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}'), [
                 'card_id_left' => array_keys($card_from_left)[0],
                 'card_id_right' => array_keys($card_from_right)[0],
                 'card_left' => array_values($card_from_left)[0]['type_arg']/10,
@@ -554,7 +596,7 @@ class BottleImp extends Table {
         $player_id = $this->getActivePlayerId();
         $autoplay_card_id = $this->getAutoplayCard($player_id);
         if ($autoplay_card_id) {
-            $this->playCardFromPlayer($autoplay_card_id, $player_id);
+            $this->playCardFromPlayer($player_id, $autoplay_card_id);
             $this->gamestate->nextState('nextPlayer');
         } else {
             $this->gamestate->nextState('playerTurn');
@@ -701,19 +743,36 @@ class BottleImp extends Table {
     {
         $state_name = $state['name'];
 
-        // TODO
+        // TODO - modify for 2 players, and when the dealer doesn't discard to the devil's trick
         if ($state_name == 'passCards') {
-            // Pass a random card
+            // Pass random cards
             $cards_in_hand = $this->deck->getPlayerHand($active_player);
-            $random_key = array_rand($cards_in_hand);
-            $card_id = $cards_in_hand[$random_key]['id'];
-            $this->passCardsFromPlayer($card_id, $active_player);
+            $player_count = self::getUniqueValueFromDB('select count(*) from player');
+            if ($player_count == 2) {
+                // TODO 2 players
+            } else {
+                if ($player_count == 5 && $active_player == $this->getDealer()) {
+                    $cards_count = 2;
+                } else {
+                    $cards_count = 3;
+                }
+                $random_keys = array_rand($cards_in_hand, $card_count);
+                $cards_to_pass = [];
+                foreach ($random_keys as $k) {
+                    $cards_to_pass[] = $cards_in_hand[$random_key]['id'];
+                }
+                // Pad the array
+                for ($i = count($cards_to_pass); $i < 4; $i++) {
+                    $cards_to_pass[] = 0;
+                }
+                $this->passCardsFromPlayer($active_player, ...$cards_to_pass);
+            }
         } else if ($state_name == 'playerTurn') {
             // Play a random card
             $playable_cards = $this->getPlayableCards($active_player);
             $random_key = array_rand($playable_cards);
             $card_id = $playable_cards[$random_key]['id'];
-            $this->playCardFromPlayer($card_id, $active_player);
+            $this->playCardFromPlayer($active_player, $card_id);
 
             // Next player
             $this->gamestate->nextState();

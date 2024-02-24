@@ -91,6 +91,8 @@ function (dojo, declare) {
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
+            this.playerCount = gamedatas.playerorder.length;
+
             // Info box
             document.getElementById('imp_round_number').textContent = this.gamedatas.roundNumber;
             document.getElementById('imp_total_rounds').textContent = this.gamedatas.totalRounds;
@@ -112,16 +114,17 @@ function (dojo, declare) {
 
             this.playersPassedCards = [];
             this.passPlayers = {};
-            this.passPlayers[playerorder[(playerPos + 1) % playerorder.length]] = 'left';
-            this.passPlayers[playerorder[(playerPos == 0 ? playerorder.length : playerPos) - 1]] = 'right';
+            this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = 'left';
+            this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = 'right';
             document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = _("Devil's Trick");
             // TODO: Are tooltips necessary?
             // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
 
-            if (playerorder.length == 2) {
+            if (this.playerCount == 2) {
                 // TODO: Tooltips
                 this.passKeys = ['left', 'center', 'center2', 'right'];
-            } else {
+            } else if (this.playerCount != 5) {
+                // Set inside onEnteringState
                 this.passKeys = ['left', 'center', 'right'];
             }
 
@@ -200,8 +203,16 @@ function (dojo, declare) {
                 if (this.isSpectator)
                     break;
                 document.getElementById('imp_passCards').style.display = 'flex';
-                this.showCenterPassBox(true);
                 if (this.isCurrentPlayerActive()) {
+                    if (this.playerCount == 5) {
+                        if (this.player_id == this.gamedatas.dealer) {
+                            this.passKeys = ['left', 'right'];
+                            this.showCenterPassBox(false);
+                        } else {
+                            this.passKeys = ['left', 'center', 'right'];
+                            this.showCenterPassBox(true);
+                        }
+                    }
                     this.markActivePassBox('left');
                     // Mark clickable cards and boxes
                     document.querySelectorAll('#imp_myhand .stockitem, .imp_pass').forEach(
@@ -515,6 +526,10 @@ function (dojo, declare) {
             document.getElementById('imp_max_bottle_price').textContent = maxPrice;
         },
 
+        markDealer: function() {
+            // TODO: mark new dealer
+        },
+
         // /////////////////////////////////////////////////
         // // Player's action
 
@@ -594,14 +609,18 @@ function (dojo, declare) {
         },
 
         notif_newHandPublic: function(notif) {
-            // Reset scores and hand size
-            for (let scorePile of Object.values(this.tricksWon)) {
-                scorePile.setValue(0);
+            // Reset counters
+            for (let tricksWon of Object.values(this.tricksWon)) {
+                tricksWon.setValue(0);
             }
-
             for (let handSize of Object.values(this.handSizes)) {
                 handSize.setValue(notif.args.hand_size);
             }
+            if (this.playerCount == 5) {
+                this.handSizes[notif.args.dealer].setValue(notif.args.hand_size - 1);
+            }
+            this.gamedatas.dealer = notif.args.dealer;
+            this.markDealer();
             document.getElementById('imp_round_number').textContent = notif.args.round_number;
             for (let bottle of Object.values(this.gamedatas.bottles)) {
                 bottle.price = 19;
@@ -631,7 +650,7 @@ function (dojo, declare) {
 
         notif_passCards: function(notif) {
             if (notif.args.player_id != this.player_id)
-                this.handSizes[notif.args.player_id].incValue(this.gamedatas.playerorder.length == 2 ? -4 : -3);
+                this.handSizes[notif.args.player_id].incValue(this.playerCount == 2 ? -4 : -3);
             if (this.passPlayers[notif.args.player_id]) {
                 if (this.isCurrentPlayerActive()) {
                     // Remember this player passed and animate later
