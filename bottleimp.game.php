@@ -71,7 +71,7 @@ class BottleImp extends Table {
             $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes($player['player_name'])."','".addslashes($player['player_avatar'])."')";
 
             // Player statistics - TODO
-            // $this->initStat('player', 'won_tricks', 0, $player_id);
+            // $this->initStat('player', 'tricks_won', 0, $player_id);
             // $this->initStat('player', 'average_points_per_trick', 0, $player_id);
             // $this->initStat('player', 'number_of_trumps_played', 0, $player_id);
         }
@@ -101,7 +101,7 @@ class BottleImp extends Table {
         $this->deck->createCards($cards, 'deck');
 
         // Init bottles
-        $sql = 'INSERT INTO bottles (id, owner, price) VALUES (1, "", 19)';
+        $sql = 'INSERT INTO bottles (id, owner, price) VALUES (1, NULL, 19)';
         if ($this->getGameStateValue('numberOfBottles') == 2) {
             $sql .= ', (2, "", 19)';
         }
@@ -155,8 +155,7 @@ class BottleImp extends Table {
 
         foreach ($result['players'] as &$player) {
             $player_id = $player['id'];
-            $player['won_tricks'] = $score_piles[$player_id]['won_tricks'];
-            $player['score_pile'] = $score_piles[$player_id]['points'];
+            $player['tricks_won'] = $score_piles[$player_id]['tricks_won'];
             $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
         }
 
@@ -249,12 +248,12 @@ class BottleImp extends Table {
         $cards = $this->deck->getCardsInLocation('scorepile');
         foreach ($cards as $card) {
             $player_id = $card['location_arg'];
-            $result[$player_id]['points'] += $this->$cards[$card['type_arg']/10]['points'];
+            $result[$player_id]['points'] += $this->cards[$card['type_arg']/10]['points'];
             $pile_size_by_player[$player_id] += 1;
         }
 
         foreach ($players as $player_id => $player) {
-            $result[$player_id]['won_tricks'] = $pile_size_by_player[$player_id] / 2;
+            $result[$player_id]['tricks_won'] = $pile_size_by_player[$player_id] / 2;
         }
 
         return $result;
@@ -388,7 +387,7 @@ class BottleImp extends Table {
      * The action method of state X is called everytime the current game state is set to X.
      */
     function stNewHand() {
-        $this->incGameStateValue('roundNumber', 1);
+        $round_number = $this->incGameStateValue('roundNumber', 1);
 
         // Shuffle deck
         $this->deck->moveAllCardsInLocation(null, 'deck');
@@ -413,9 +412,10 @@ class BottleImp extends Table {
             self::giveExtraTime($player_id);
         }
 
-        // Notify both players about the public strawmen, first player, and first picker
+        // TODO: Add new dealer
         self::notifyAllPlayers('newHandPublic', '', [
             'hand_size' => $hand_size,
+            'round_number' => $round_number,
         ]);
 
         $this->gamestate->setAllPlayersMultiactive();
@@ -527,7 +527,7 @@ class BottleImp extends Table {
 
         // Note: we use 2 notifications to pause the display during the first notification
         // before cards are collected by the winner
-        self::notifyAllPlayers('trickWin', clienttranslate('${player_name} wins the trick worth ${points} points'), [
+        self::notifyAllPlayers('trickWin', $win_message, [
             'player_id' => $winning_player,
             'player_name' => $players[$winning_player]['player_name'],
             'points' => $points,
@@ -569,7 +569,7 @@ class BottleImp extends Table {
         $devil_cards_display = [];
         foreach ($center_cards as $card) {
             $card['type_arg'] /= 10;
-            $devil_points = $this->$cards[$card['type_arg']]['points'];
+            $devil_points = $this->cards[$card['type_arg']]['points'];
             $suit_display = $this->getSuitLogName($card);
             $devil_cards_display[] = "{$card['type_arg']}$suit_display";
         }
@@ -602,6 +602,8 @@ class BottleImp extends Table {
                         $lose_message = clienttranslate('${player_name} owns the bottle and loses ${points_disp} points');
                     }
                 }
+                $score_piles[$player_id]['points'] = -$points;
+                self::DbQuery("UPDATE player SET player_score=player_score-$points  WHERE player_id='$player_id'");
                 self::notifyAllPlayers('endHand', $lose_message, [
                     'player_id' => $player_id,
                     'player_name' => $players[$player_id]['player_name'],
@@ -641,12 +643,6 @@ class BottleImp extends Table {
         }
         $scoreTable[] = $row;
 
-        $row = [clienttranslate('Score pile')];
-        foreach ($players as $player_id => $player) {
-            $row[] = $score_piles[$player_id]['points'];
-        }
-        $scoreTable[] = $row;
-
         $row = [clienttranslate('Round score')];
         foreach ($players as $player_id => $player) {
             $row[] = $score_piles[$player_id]['points'];
@@ -677,6 +673,9 @@ class BottleImp extends Table {
             $this->gamestate->nextState('endGame');
             return;
         }
+
+        // Reset bottles
+        self::DbQuery('UPDATE bottles SET owner="", price=19');
 
         // Change first player
         $new_first_player = self::getPlayerAfter(self::getGameStateValue('firstPlayer'));

@@ -72,7 +72,7 @@ class view_bottleimp_bottleimp extends game_view {
         $this->tpl['MY_STRAWMEN'] = self::_('My strawmen');
         $this->tpl['TRUMP_RANK'] = self::_('Trump rank');
         $this->tpl['TRUMP_SUIT'] = self::_('Trump suit');
-        $this->tpl['SCORE_PILE'] = self::_('Score pile');
+        $this->tpl['TRICKS_WON'] = self::_('Tricks won');
       /*********** Do not change anything below this line  ************/
     }
 }

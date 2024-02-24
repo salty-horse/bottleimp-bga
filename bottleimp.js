@@ -34,8 +34,8 @@ function (dojo, declare) {
             this.cardHeight = 200;
 
             this.suitSymbolToId = {
-                '♠': 1,
-                '♥': 2,
+                '♥': 1,
+                '♠': 2,
                 '♣': 3,
             };
         },
@@ -91,6 +91,11 @@ function (dojo, declare) {
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
+            // Info box
+            document.getElementById('imp_round_number').textContent = this.gamedatas.roundNumber;
+            document.getElementById('imp_total_rounds').textContent = this.gamedatas.totalRounds;
+            this.initBottles();
+
             // Init pass boxes
             document.getElementById('imp_passCards').style.display = 'none';
             this.activePassType = null;
@@ -142,15 +147,15 @@ function (dojo, declare) {
             // Mapping between strawmen card IDs and elements
             this.strawmenById = {};
 
-            this.scorePiles = {};
+            this.tricksWon = {};
             this.handSizes = {};
 
             for (const [player_id, player_info] of Object.entries(this.gamedatas.players)) {
                 // Score piles
-                let score_pile_counter = new ebg.counter();
-                this.scorePiles[player_id] = score_pile_counter;
-                score_pile_counter.create(`imp_score_pile_${player_id}`);
-                score_pile_counter.setValue(player_info.score_pile);
+                let tricks_won_counter = new ebg.counter();
+                this.tricksWon[player_id] = tricks_won_counter;
+                tricks_won_counter.create(`imp_score_pile_${player_id}`);
+                tricks_won_counter.setValue(player_info.tricks_won);
 
                 // Hand size counter
                 dojo.place(this.format_block('jstpl_player_hand_size', player_info),
@@ -170,7 +175,7 @@ function (dojo, declare) {
             for (let i in this.gamedatas.cardsontable) {
                 var card = this.gamedatas.cardsontable[i];
                 var player_id = card.location_arg;
-                this.putCardOnTable(player_id, card.type_arg / 10, card.id);
+                this.putCardOnTable(player_id, card.id);
             }
 
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -198,6 +203,9 @@ function (dojo, declare) {
                 this.showCenterPassBox(true);
                 if (this.isCurrentPlayerActive()) {
                     this.markActivePassBox('left');
+                    // Mark clickable cards and boxes
+                    document.querySelectorAll('#imp_myhand .stockitem, .imp_pass').forEach(
+                        e => e.classList.add('imp_clickable'));
                 } else {
                     this.showCenterPassBox(false);
                     for (let player_id of this.playersPassedCards) {
@@ -205,6 +213,7 @@ function (dojo, declare) {
                     }
                 }
                 break;
+
             // Mark playable cards
             case 'playerTurn':
                 this.markActivePlayerTable(true);
@@ -236,12 +245,6 @@ function (dojo, declare) {
         //
         onLeavingState: function(stateName)
         {
-            switch (stateName) {
-            case 'passCards':
-                this.passCards = {};
-                this.playersPassedCards = [];
-                break;
-            }
         },
 
         // onUpdateActionButtons: in this method you can manage 'action buttons' that are displayed in the
@@ -322,16 +325,19 @@ function (dojo, declare) {
             this.updateStockOverlap();
         },
 
-        putCardOnTable: function(player_id, rank, card_id) {
-            let placedCard = dojo.create('div', {
-                id: 'imp_cardontable_' + player_id,
-                class: 'imp_card imp_cardontable',
-            }, 'imp_playertablecard_' + player_id);
+        putCardOnTable: function(player_id, card_id) {
+            let spritePos = this.getSpriteXY(card_id);
+            let placedCard = dojo.place(
+                this.format_block('jstpl_cardontable', {
+                    x: spritePos.x,
+                    y: spritePos.y,
+                    id: `imp_cardontable_${player_id}`,
+                } ), `imp_playertablecard_${player_id}`);
             placedCard.dataset.card_id = card_id;
         },
 
-        playCardOnTable: function(player_id, rank, card_id) {
-            this.putCardOnTable(player_id, rank, card_id);
+        playCardOnTable: function(player_id, card_id) {
+            this.putCardOnTable(player_id, card_id);
 
             let strawElem = this.strawmenById[card_id];
             if (strawElem) {
@@ -358,13 +364,13 @@ function (dojo, declare) {
             this.slideToObject('imp_cardontable_' + player_id, 'imp_playertablecard_' + player_id).play();
         },
 
-        putPassCardOnTable: function(card_id, pass_type, id) {
+        putPassCardOnTable: function(card_id, pass_type, elem_id) {
             let spritePos = this.getSpriteXY(card_id);
             let placedCard = dojo.place(
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
-                    id: id ? id : `imp_passcardontable_${card_id}`,
+                    id: elem_id ?? `imp_passcardontable_${card_id}`,
                 } ), `imp_passcard_${pass_type}`);
             placedCard.style.zIndex = 100;
             placedCard.dataset.card_id = card_id;
@@ -456,8 +462,8 @@ function (dojo, declare) {
         },
 
         unmarkPlayableCards: function() {
-            document.querySelectorAll('#imp_mystrawmen .imp_playable, #imp_myhand .imp_playable').forEach(
-                e => e.classList.remove('imp_playable'));
+            document.querySelectorAll('#imp_myhand .imp_playable, #imp_myhand .imp_clickable, .imp_pass').forEach(
+                e => e.classList.remove('imp_playable', 'imp_clickable'));
         },
 
         markActivePassBox: function(pass_type) {
@@ -491,6 +497,22 @@ function (dojo, declare) {
                 x: this.cardWidth * (pos % 11),
                 y: this.cardHeight * Math.floor(pos / 11),
             }
+        },
+
+        initBottles: function() {
+            let maxPrice = 0;
+            for (let bottle of Object.values(this.gamedatas.bottles)) {
+                if (bottle.price > maxPrice) {
+                    maxPrice = bottle.price;
+                }
+                dojo.destroy(`imp_bottle_${bottle.id}`);
+                dojo.place(
+                    this.format_block('jstpl_bottle', {
+                        id: bottle.id,
+                        price: bottle.price,
+                    } ), bottle.owner ? `imp_bottle_slot_${bottle.owner}` : 'imp_bottles');
+            }
+            document.getElementById('imp_max_bottle_price').textContent = maxPrice;
         },
 
         // /////////////////////////////////////////////////
@@ -565,28 +587,31 @@ function (dojo, declare) {
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
             dojo.subscribe('trickWin', this, 'notif_trickWin');
-            this.notifqueue.setSynchronous('trickWin', 1000);
-            dojo.subscribe('giveAllCardsToPlayer', this, 'notif_giveAllCardsToPlayer');
+            this.notifqueue.setSynchronous('trickWin', 0);
             this.notifqueue.setSynchronous('giveAllCardsToPlayer', 1000);
-            dojo.subscribe('endHand', this, 'notif_endHand');
+            // dojo.subscribe('endHand', this, 'notif_endHand');
             dojo.subscribe('newScores', this, 'notif_newScores');
         },
 
         notif_newHandPublic: function(notif) {
             // Reset scores and hand size
-            for (let scorePile of Object.values(this.scorePiles)) {
+            for (let scorePile of Object.values(this.tricksWon)) {
                 scorePile.setValue(0);
             }
 
             for (let handSize of Object.values(this.handSizes)) {
                 handSize.setValue(notif.args.hand_size);
             }
+            document.getElementById('imp_round_number').textContent = notif.args.round_number;
+            for (let bottle of Object.values(this.gamedatas.bottles)) {
+                bottle.price = 19;
+                bottle.owner = null;
+            }
+            this.initBottles();
         },
 
         notif_newHand: function(notif) {
-            // We received a new full hand of 13 cards.
             this.playerHand.removeAll();
-
             this.initPlayerHand(notif.args.hand_cards);
         },
 
@@ -618,7 +643,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronousDuration(0);
         },
 
-        notif_takePassedCards: function(notif) {
+        notif_takePassedCards: async function(notif) {
             for (let pos of ['left', 'right']) {
                 let card_id = notif.args[`card_id_${pos}`];
                 this.fadeOutAndDestroy(`imp_passcardontable_${pos}`);
@@ -629,30 +654,37 @@ function (dojo, declare) {
                     dojo.fadeIn({node: elem, duration: 500}).play();
                 }
             }
-            setTimeout(() => {
-                for (let pos of ['left', 'right']) {
-                    let card_id = notif.args[`card_id_${pos}`];
-                    let reveal_id = `imp_passcardreveal_${pos}`;
-                    dojo.destroy(reveal_id);
-                    this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);
-                }
-                this.notifqueue.setSynchronousDuration(0);
-            },
-            this.instantaneousMode ? 0 : 1000);
+            if (!this.instantaneousMode)
+                await new Promise(r => setTimeout(r, 2000));
+
+            for (let pos of ['left', 'right']) {
+                let card_id = notif.args[`card_id_${pos}`];
+                let reveal_id = `imp_passcardreveal_${pos}`;
+                dojo.destroy(reveal_id);
+                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);
+            }
+
+            // Give cards time to slide to the player's hand
+            if (!this.instantaneousMode)
+                await new Promise(r => setTimeout(r, 500));
+
+            // Show game area
+            this.passCards = {};
+            this.playersPassedCards = [];
+            document.getElementById('imp_passCards').style.display = 'none';
+            document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'block');
+
+            this.notifqueue.setSynchronousDuration(0);
         },
 
         notif_playCard: function(notif) {
             // Mark the active player, in case this was an automated move (skipping playerTurn state)
             this.markActivePlayerTable(true, notif.args.player_id);
             this.unmarkPlayableCards();
-            this.playCardOnTable(notif.args.player_id, notif.args.value, notif.args.card_id);
+            this.playCardOnTable(notif.args.player_id, notif.args.card_id);
         },
 
-        notif_trickWin: function() {
-            // We do nothing here (just wait so players can view the cards played before they're gone)
-        },
-
-        notif_giveAllCardsToPlayer: function(notif) {
+        notif_trickWin: async function(notif) {
             // Move all cards on table to given table, then destroy them
             let winner_id = notif.args.player_id;
             for (let player_id in this.gamedatas.players) {
@@ -668,11 +700,33 @@ function (dojo, declare) {
                 });
                 anim.play();
             }
-            this.scorePiles[winner_id].incValue(notif.args.points);
+            this.tricksWon[winner_id].incValue(1);
+
+            // Update bottle info
+            let bottle_id = notif.args.bottle_id;
+            let bottle_info = this.gamedatas.bottles[bottle_id];
+            if (bottle_id) {
+                let bottle_elem = document.getElementById(`imp_bottle_${bottle_id}`);
+                if (notif.args.price != bottle_info.price) {
+                    bottle_info.price = notif.args.price;
+                    bottle_elem.textContent = notif.args.price;
+                    document.getElementById('imp_max_bottle_price').textContent =
+                        Math.max(...this.gamedatas.bottles.map(b => b.price), 0);
+                }
+
+                if (winner_id != bottle_info.owner) {
+                    bottle_info.owner = winner_id;
+                    this.slideToObject(bottle_elem, `imp_bottle_slot_${winner_id}`);
+                }
+            }
+
+            if (!this.instantaneousMode)
+                await new Promise(r => setTimeout(r, 1000));
+            this.notifqueue.setSynchronousDuration(0);
         },
 
         notif_endHand: function(notif) {
-            this.scorePiles[notif.args.player_id].incValue(notif.args.gift_value);
+            // TODO: Adjust scores here or in newScores?
         },
 
         notif_newScores: function(notif) {

@@ -14,21 +14,8 @@ $gameinfos = [
 
 'game_name' => 'The Bottle Imp',
 
-// Game designer (or game designers, separated by commas)
-'designer' => 'Günter Cornett',
-
-// Game artist (or game artists, separated by commas)
-'artist' => 'Maxime Morin',
-
-// Year of FIRST publication of this game. Can be negative.
-'year' => 1995,
-
 // Game publisher
 'publisher' => 'Matagot',
-
-'presentation' => [
-    totranslate("A trick-taking game where you try to avoid having the Botte Imp when the round ends."),
-],
 
 // Url of game publisher website
 'publisher_website' => 'https://www.matagot.com',
@@ -74,19 +61,6 @@ $gameinfos = [
 
 // Is this game cooperative (all players wins together or loose together)
 'is_coop' => 0,
-
-
-// Complexity of the game, from 0 (extremely simple) to 5 (extremely complex)
-'complexity' => 2,
-
-// Luck of the game, from 0 (absolutely no luck in this game) to 5 (totally luck driven)
-'luck' => 3,
-
-// Strategy of the game, from 0 (no strategy can be setup) to 5 (totally based on strategy)
-'strategy' => 3,
-
-// Diplomacy of the game, from 0 (no interaction in this game) to 5 (totally based on interaction and discussion between players)
-'diplomacy' => 0,
 
 // Colors attributed to players
 'player_colors' => [ "ff0000", "008000", "0000ff", "ffa500", "000000", "ffffff" ],
