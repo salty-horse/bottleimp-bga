@@ -11,21 +11,66 @@
     },
     "default": 2
   },
-  "101": {
-    "name": "Number of bottles",
+  "104": {
+    "name": "Mode",
     "values": {
       "1": {
-        "name": "One bottle (Team mode)"
+        "name": "Individual"
       },
       "2": {
-        "name": "Two bottles (No teams)"
+        "name": "Teams (2-1-1)"
       }
     },
     "default": 1,
     "displaycondition": [
       {
         "type": "minplayers",
-        "value": 5
+        "value": [
+          4
+        ]
+      }
+    ]
+  },
+  "105": {
+    "name": "Mode",
+    "values": {
+      "1": {
+        "name": "Individual (two bottles)"
+      },
+      "2": {
+        "name": "Teams (2-2-1)"
+      }
+    },
+    "default": 1,
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          5
+        ]
+      }
+    ]
+  },
+  "106": {
+    "name": "Mode",
+    "values": {
+      "1": {
+        "name": "Individual (two bottles)"
+      },
+      "2": {
+        "name": "Teams (2-2-2)"
+      },
+      "3": {
+        "name": "Teams (2-2-1-1)"
+      }
+    },
+    "default": 1,
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          6
+        ]
       }
     ]
   }
