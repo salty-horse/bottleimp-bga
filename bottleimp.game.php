@@ -264,7 +264,7 @@ class BottleImp extends Table {
         return self::getPlayerBefore(self::getGameStateValue('firstPlayer'));
     }
 
-    const SUIT_SYMBOLS = ['♠', '♥', '♣'];
+    const SUIT_SYMBOLS = ['♥', '♠', '♣'];
     function getSuitLogName($card) {
         return self::SUIT_SYMBOLS[$card['type'] - 1];
     }
@@ -284,42 +284,46 @@ class BottleImp extends Table {
     function passCardsFromPlayer($player_id, $left, $right, $center, $center2) {
         self::checkAction('passCards');
 
-        if ($center2 && count($players) != 2)
-            throw new BgaUserException(self::_('You must pass 3 cards'));
+        $player_count = self::getUniqueValueFromDB('select count(*) from player');
+        if ($player_count == 2) {
+            if (!$center2)
+                throw new BgaUserException('You must pass 4 cards');
+        } else {
+            if ($center2)
+                throw new BgaUserException('You must pass 3 cards');
+        }
 
-        // TODO - support 2 players
-        // TODO - modify for when the dealer doesn't discard to the devil's trick in 5 players
+        // TODO - support 2 players - check source of each card
 
         // In 5-player mode, the dealer doesn't pass to the center
-        $player_count = self::getUniqueValueFromDB('select count(*) from player');
         $pass_two = false;
         if ($player_count == 5 && $player_id == $this->getDealer()) {
             $pass_two = true;
             if ($center)
-                throw new BgaUserException(self::_('You must not pass the center card'));
+                throw new BgaUserException('You must not pass the center card');
         } else {
             if (!$center)
-                throw new BgaUserException(self::_('You must pass the center card'));
+                throw new BgaUserException('You must pass the center card');
         }
 
-        $passed_cards = [$left, $right, $center];
+        $passed_cards = [$left, $right];
         if ($center) {
-            $passed_cards[] = [$center];
+            $passed_cards[] = $center;
             if ($center2) {
-                $passed_cards[] = [$center2];
+                $passed_cards[] = $center2;
             }
         }
         $cards_center = array_slice($passed_cards, 2);
 
         if (count(array_unique($passed_cards)) != count($passed_cards))
-            throw new BgaUserException(self::_('You must unique cards'));
+            throw new BgaUserException('You must unique cards');
 
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
         if (!in_array($left, array_keys($cards_in_hand)) ||
             !in_array($right, array_keys($cards_in_hand)) ||
             ($center && !in_array($center, array_keys($cards_in_hand))) ||
             ($center2 && !in_array($center2, array_keys($cards_in_hand)))) {
-            throw new BgaUserException(self::_('You do not have this card'));
+            throw new BgaUserException('You do not have this card');
         }
 
         $left_player_id = self::getPlayerAfter($player_id);
@@ -343,10 +347,10 @@ class BottleImp extends Table {
             $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, and ${card_right} to ${player_name2}');
         } else {
             $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick');
-            if ($pass_four) {
+            if ($player_count == 2) {
                 $pass_notify_args['cards_center'] = implode(', ', array_slice($cards_center, 2));
             } else {
-                $pass_notify_args['cards_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
+                $pass_notify_args['card_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
             }
         }
 
@@ -372,13 +376,13 @@ class BottleImp extends Table {
 
         // Sanity check. A more thorough check is done later.
         if ($current_card['location'] == 'hand' && $current_card['location_arg'] != $player_id) {
-            throw new BgaUserException(self::_('You do not have this card'));
+            throw new BgaUserException('You do not have this card');
         }
 
         $playable_cards = $this->getPlayableCards($player_id);
 
         if (!array_key_exists($card_id, $playable_cards)) {
-            throw new BgaUserException(self::_('You cannot play this card'));
+            throw new BgaUserException('You cannot play this card');
         }
 
         $this->deck->moveCard($card_id, 'cardsontable', $player_id);
@@ -752,14 +756,14 @@ class BottleImp extends Table {
                 // TODO 2 players
             } else {
                 if ($player_count == 5 && $active_player == $this->getDealer()) {
-                    $cards_count = 2;
+                    $card_count = 2;
                 } else {
-                    $cards_count = 3;
+                    $card_count = 3;
                 }
                 $random_keys = array_rand($cards_in_hand, $card_count);
                 $cards_to_pass = [];
                 foreach ($random_keys as $k) {
-                    $cards_to_pass[] = $cards_in_hand[$random_key]['id'];
+                    $cards_to_pass[] = $cards_in_hand[$k]['id'];
                 }
                 // Pad the array
                 for ($i = count($cards_to_pass); $i < 4; $i++) {

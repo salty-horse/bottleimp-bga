@@ -124,8 +124,9 @@ function (dojo, declare) {
                 // TODO: Tooltips
                 this.passKeys = ['left', 'center', 'center2', 'right'];
             } else if (this.playerCount != 5) {
-                // Set inside onEnteringState
                 this.passKeys = ['left', 'center', 'right'];
+            } else {
+                // Set inside onEnteringState
             }
 
             for (let [player_id, pos] of Object.entries(this.passPlayers)) {
@@ -212,6 +213,8 @@ function (dojo, declare) {
                             this.passKeys = ['left', 'center', 'right'];
                             this.showCenterPassBox(true);
                         }
+                    } else {
+                        this.showCenterPassBox(true);
                     }
                     this.markActivePassBox('left');
                     // Mark clickable cards and boxes
@@ -634,7 +637,7 @@ function (dojo, declare) {
             this.initPlayerHand(notif.args.hand_cards);
         },
 
-        notif_passCardsPrivate: function(notif) {
+        notif_passCardsPrivate: async function(notif) {
             this.unmarkPlayableCards();
             this.showCenterPassBox(false);
             for (let player_id of this.playersPassedCards) {
@@ -645,6 +648,10 @@ function (dojo, declare) {
             for (let pos of this.passKeys) {
                 this.fadeOutAndDestroy(document.querySelector(`#imp_passcard_${pos} > div`));
             }
+
+            if (!this.instantaneousMode)
+                await new Promise(r => setTimeout(r, 500));
+
             this.notifqueue.setSynchronousDuration(0);
         },
 
