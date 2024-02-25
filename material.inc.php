@@ -1,11 +1,11 @@
 <?php
 /**
  *------
- * BGA framework'   => © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * The Bottle Imp implementation '   => © Ori Avtalion <ori@avtalion.name>
+ * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
+ * Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
  *
- * This code has been produced on the BGA studio platform for use on http'   =>//boardgamearena.com.
- * See http'   =>//en.boardgamearena.com/#!doc/Studio for more information.
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
  * -----
  *
  * material.inc.php
@@ -75,4 +75,20 @@ $this->cards = [
     '36'   => ['rank' => 36, 'suit' => 3, 'points' => 6],
     '36.5' => ['rank' => 36.5, 'suit' => 3, 'points' => 6],
     '37'   => ['rank' => 37, 'suit' => 3, 'points' => 6],
+];
+
+$this->teamModes = [
+    4 => [
+        'opt' => '4playerMode',
+        2 => [1, 2, 1, 3], // 2-1-1
+    ],
+    5 => [
+        'opt' => '5playerMode',
+        2 => [1, 2, 3, 1, 2], // 2-2-1
+    ],
+    6 => [
+        'opt' => '6playerMode',
+        2 => [1, 2, 3, 1, 2, 3], // 2-2-2
+        3 => [1, 2, 3, 1, 2, 4], // 2-2-1-1
+    ],
 ];

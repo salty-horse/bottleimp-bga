@@ -1,7 +1,7 @@
 
 -- ------
 -- BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
--- The Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
+-- Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
 -- 
 -- This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
 -- See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -35,5 +35,5 @@ CREATE TABLE IF NOT EXISTS `bottles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
 
 ALTER TABLE `player`
-    ADD `player_score_pile` INT UNSIGNED NOT NULL DEFAULT 0;
+    ADD `team` INT UNSIGNED DEFAULT 0;
 

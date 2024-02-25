@@ -2,7 +2,7 @@
  /**
   *------
   * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
-  * The Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
+  * Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
   *
   * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
   * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -35,8 +35,11 @@ class BottleImp extends Table {
             'roundNumber' => 10,
             'ledSuit' => 11,
             'firstPlayer' => 12,
+            'numberOfBottles' => 13,
             'roundsPerPlayer' => 100,
-            'numberOfBottles' => 101,
+            '4playerMode' => 104,
+            '5playerMode' => 105,
+            '6playerMode' => 106,
             // 'teamMode' => 102, # TODO options for team modes when playing with 1 bottle
         ]);
 
@@ -86,13 +89,23 @@ class BottleImp extends Table {
 
         self::setGameStateInitialValue('roundNumber', 0);
 
+        $number_of_bottles = 1;
+        $player_count = count($players);
+        if ($player_count == 5 || $player_count == 6) {
+            if (self::getGameStateValue("${player_count}playerMode") == 1) {
+                $number_of_bottles = 2;
+            }
+        }
+
+        self::setGameStateInitialValue('numberOfBottles', $number_of_bottles);
+
         // Init game statistics
         // (note: statistics are defined in your stats.json file)
 
         // Create cards
         $cards = [];
         foreach ($this->cards as $cardinfo) {
-            if (count($players) <= 4 && !is_int($cardinfo['rank']))
+            if ($player_count <= 4 && !is_int($cardinfo['rank']))
                 continue;
             // Turn float ranks to ints
             $cards[] = ['type' => $cardinfo['suit'], 'type_arg' => $cardinfo['rank'] * 10, 'nbr' => 1];
@@ -102,7 +115,7 @@ class BottleImp extends Table {
 
         // Init bottles
         $sql = 'INSERT INTO bottles (id, owner, price) VALUES (1, NULL, 19)';
-        if ($this->getGameStateValue('numberOfBottles') == 2) {
+        if ($number_of_bottles == 2) {
             $sql .= ', (2, "", 19)';
         }
         self::DbQuery($sql);
@@ -151,6 +164,7 @@ class BottleImp extends Table {
         $result['totalRounds'] = count($result['players']) * $this->getGameStateValue('roundsPerPlayer');
         $result['firstPlayer'] = $this->getGameStateValue('firstPlayer');
         $result['dealer'] = $this->getDealer();
+        $result['teams'] = $this->getTeams();
 
         $score_piles = $this->getScorePiles();
 
@@ -262,6 +276,38 @@ class BottleImp extends Table {
 
     function getDealer() {
         return self::getPlayerBefore(self::getGameStateValue('firstPlayer'));
+    }
+
+    function getTeams() {
+        $teams = self::getCollectionFromDb('SELECT player_id, team FROM player', true);
+        if ($teams[array_key_first($teams)] == null)
+            return null;
+        return $teams;
+    }
+
+    function assignTeams() {
+        $team_info = $this->teams[count($players)];
+        if (!$team_info)
+            return null;
+        $teams = $team_info[self::getGameStateValue($team_info['opt'])];
+        if (!$teams) {
+            return null;
+        }
+
+        // 2-2-2 teams don't change after initial assignment
+        if ($teams === [2,2,2] && self::getUniqueValueFromDB('SELECT team FROM player LIMIT 1')) {
+            return $this->getTeams();
+        }
+
+        $current_player = $this->getGameStateValue('firstPlayer');
+        $player_to_team = [];
+        foreach ($teams as $team_id) {
+            $player_to_team[$current_player] = $team_id;
+            self::DbQuery("UPDATE player SET team=$team_id WHERE player_id=$current_player");
+            $current_player = self::getPlayerAfter($current_player);
+        }
+
+        return $player_to_team;
     }
 
     const SUIT_SYMBOLS = ['♥', '♠', '♣'];
@@ -458,10 +504,13 @@ class BottleImp extends Table {
             self::giveExtraTime($player_id);
         }
 
+        $teams = $this->assignTeams();
+
         self::notifyAllPlayers('newHandPublic', '', [
             'hand_size' => $hand_size,  // 5-player exception handled in JS
             'round_number' => $round_number,
             'dealer' => $dealer,
+            'teams' => $teams,
         ]);
 
         $this->gamestate->setAllPlayersMultiactive();

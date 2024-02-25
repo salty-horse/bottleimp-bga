@@ -2,13 +2,13 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * The Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
+ * Bottle Imp implementation : © Ori Avtalion <ori@avtalion.name>
  *
  * This code has been produced on the BGA studio platform for use on https://boardgamearena.com.
  * See http://en.doc.boardgamearena.com/Studio for more information.
  * -----
  *
- * The Bottle Imp main action entry point
+ * Bottle Imp main action entry point
  *
  *
  * In this file, you are describing all the methods that can be called from your
