@@ -751,7 +751,7 @@ class BottleImp extends Table {
         }
         $scoreTable[] = $row;
 
-        $row = [clienttranslate('Cumulative score')];
+        $row = [$end_of_game ? clienttranslate('Final Score') : clienttranslate('Cumulative score')];
         foreach ($players as $player_id => $player) {
             $row[] = $new_scores[$player_id];
         }

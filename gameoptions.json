@@ -12,7 +12,7 @@
     "default": 2
   },
   "104": {
-    "name": "Mode",
+    "name": "Play mode",
     "values": {
       "1": {
         "name": "Individual"
@@ -32,7 +32,7 @@
     ]
   },
   "105": {
-    "name": "Mode",
+    "name": "Play mode",
     "values": {
       "1": {
         "name": "Individual (two bottles)"
@@ -52,7 +52,7 @@
     ]
   },
   "106": {
-    "name": "Mode",
+    "name": "Play mode",
     "values": {
       "1": {
         "name": "Individual (two bottles)"
