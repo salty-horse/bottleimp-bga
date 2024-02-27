@@ -203,6 +203,10 @@ class BottleImp extends Table {
     //////////// Utilities
     ////////////
 
+    function getPlayerCount() {
+        return self::getUniqueValueFromDB('select count(*) from player');
+    }
+
     function getBottlePriceAndOwner() {
         return self::getObjectFromDb(
             'SELECT id, owner, price FROM bottles ' .
@@ -286,7 +290,8 @@ class BottleImp extends Table {
     }
 
     function assignTeams() {
-        $team_info = $this->teams[count($players)];
+        $player_count = $this->getPlayerCount();
+        $team_info = $this->teamModes[$player_count] ?? null;
         if (!$team_info)
             return null;
         $teams = $team_info[self::getGameStateValue($team_info['opt'])];
@@ -330,7 +335,7 @@ class BottleImp extends Table {
     function passCardsFromPlayer($player_id, $left, $right, $center, $center2) {
         self::checkAction('passCards');
 
-        $player_count = self::getUniqueValueFromDB('select count(*) from player');
+        $player_count = $this->getPlayerCount();
         if ($player_count == 2) {
             if (!$center2)
                 throw new BgaUserException('You must pass 4 cards');
@@ -800,7 +805,7 @@ class BottleImp extends Table {
         if ($state_name == 'passCards') {
             // Pass random cards
             $cards_in_hand = $this->deck->getPlayerHand($active_player);
-            $player_count = self::getUniqueValueFromDB('select count(*) from player');
+            $player_count = $this->getPlayerCount();
             if ($player_count == 2) {
                 // TODO 2 players
             } else {
