@@ -17,7 +17,7 @@
 
 <div id="imp_info_box" class="whiteblock">
     <div>Round: <span id="imp_round_number">1</span>/<span id="imp_total_rounds">6</span></div>
-	<div><span id="imp_price_label">Bottle price</span>:</div>
+    <div><span id="imp_price_label">Bottle price</span>:</div>
     <div id="imp_max_bottle_price">19</div>
     <div id="imp_bottles" style="">
     </div>
@@ -27,9 +27,8 @@
 
 <!-- BEGIN player -->
 <div id="imp_playertable_{PLAYER_ID}" class="imp_playertable whiteblock">
-    <div class="imp_playertablename" style="color:#{PLAYER_COLOR}">
-        {PLAYER_NAME}
-    </div>
+    <div class="imp_playertablename" style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</div>
+    <div id="imp_playertable_team_{PLAYER_ID}" class="imp_team_label">Team A</div>
     <div class="imp_playertablecard" id="imp_playertablecard_{PLAYER_ID}"></div>
     <span class="imp_playertable_info">
         <span>{TRICKS_WON}: </span>

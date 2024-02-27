@@ -38,6 +38,13 @@ function (dojo, declare) {
                 '♠': 2,
                 '♣': 3,
             };
+
+            this.teamLetters = {
+                1: 'A',
+                2: 'B',
+                3: 'C',
+                4: 'D',
+            }
         },
 
         /*
@@ -100,6 +107,7 @@ function (dojo, declare) {
                 document.getElementById('imp_price_label').textContent = _('Top bottle price');
             }
             this.initBottles();
+            this.initTeams();
 
             // Init pass boxes
             document.getElementById('imp_passCards').style.display = 'none';
@@ -567,6 +575,23 @@ function (dojo, declare) {
             document.getElementById('imp_max_bottle_price').textContent = maxPrice;
         },
 
+        initTeams: function() {
+            if (!this.gamedatas.teams)
+                return;
+            for (let [player_id, team] of Object.entries(this.gamedatas.teams)) {
+                let e = document.getElementById(`imp_playertable_team_${player_id}`);
+                if (team == e.dataset.team)
+                    continue;
+                e.style.display = 'block';
+                e.textContent = _('Team ${letter}').replace('${letter}', this.teamLetters[team]);
+                if (e.dataset.team) {
+                    e.classList.remove(`imp_team_${e.dataset.team}`);
+                }
+                e.classList.add(`imp_team_${team}`);
+                e.dataset.team = team;
+            }
+        },
+
         markDealer: function() {
             // TODO: mark new dealer
         },
@@ -668,6 +693,8 @@ function (dojo, declare) {
                 bottle.owner = null;
             }
             this.initBottles();
+            this.gamedatas.teams = notif.args.teams;
+            this.initTeams();
         },
 
         notif_newHand: function(notif) {

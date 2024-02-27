@@ -153,6 +153,23 @@
     width: auto;
 }
 
+.imp_team_label {
+    display: none;
+}
+
+.imp_team_1 {
+    background-color: #ff682f;
+}
+.imp_team_2 {
+    background-color: #00aeae;
+}
+.imp_team_3 {
+    background-color: #a86fbd;
+}
+.imp_team_4 {
+    background-color: #8fdd41;
+}
+
 .imp_bottle_slot {
     display: flex;
     flex-wrap: wrap-reverse;

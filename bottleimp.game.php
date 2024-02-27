@@ -706,7 +706,6 @@ class BottleImp extends Table {
                 }
                 $score_piles[$player_id]['points'] = -$points;
                 $individual_scores[$player_id] = -$points;
-                self::DbQuery("UPDATE player SET player_score=player_score-$points  WHERE player_id='$player_id'");
                 self::notifyAllPlayers('endHand', $lose_message, [
                     'player_id' => $player_id,
                     'player_name' => $players[$player_id]['player_name'],
@@ -716,7 +715,6 @@ class BottleImp extends Table {
             } else {
                 $points = $score_piles[$player_id]['points'];
                 $individual_scores[$player_id] = $score_piles[$player_id]['points'];
-                self::DbQuery("UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'");
                 self::notifyAllPlayers('endHand', clienttranslate('${player_name} collected ${points} points'), [
                     'player_id' => $player_id,
                     'player_name' => $players[$player_id]['player_name'],
@@ -774,7 +772,7 @@ class BottleImp extends Table {
 
         $row = [clienttranslate('Round score')];
         foreach ($players as $player_id => $player) {
-            $row[] = $score_piles[$player_id]['points'];
+            $row[] = $score_object[$player_id];
         }
         $scoreTable[] = $row;
 
