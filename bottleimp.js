@@ -190,6 +190,7 @@ function (dojo, declare) {
 
                 if (player_info.visible_hand) {
                     this.initHand(this.visibleHands[player_id], player_info.visible_hand);
+                    document.getElementById(`imp_player_${player_id}_visible_hand_wrap`).style.display = 'block';
                 }
             }
             this.addTooltipToClass('imp_hand_size', _('Number of cards in hand'), '');
@@ -228,8 +229,11 @@ function (dojo, declare) {
             switch (stateName) {
             case 'passCards':
                 document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'none');
-                if (this.isSpectator)
+                if (this.isSpectator) {
+                    document.querySelectorAll('.imp_visible_hand').forEach(e => e.style.display = 'none');
                     break;
+                }
+                document.getElementById(`imp_player_${this.opponent_id}_visible_hand_wrap`).style.display = 'none';
                 document.getElementById('imp_passCards').style.display = 'flex';
                 if (this.isCurrentPlayerActive()) {
                     if (this.playerCount == 5) {
@@ -782,7 +786,11 @@ function (dojo, declare) {
                 let card_id = notif.args[`card_id_${pos}`];
                 let reveal_id = `imp_passcardreveal_${pos}`;
                 dojo.destroy(reveal_id);
-                this.playerHand.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);
+                let stock = this.playerHand;
+                if (this.playerCount == 2 && pos == 'left') {
+                    stock = this.visibleHands[this.player_id];
+                }
+                stock.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);
             }
 
             // Give cards time to slide to the player's hand
@@ -799,7 +807,13 @@ function (dojo, declare) {
         },
 
         notif_visibleHandsPublic: function(notif) {
-            // TODO
+            for (let [player_id, cards] of Object.entries(notif.args.visible_hands)) {
+                if (player_id == this.player_id) {
+                    continue;
+                }
+                this.initHand(this.visibleHands[player_id], cards);
+                document.getElementById(`imp_player_${player_id}_visible_hand_wrap`).style.display = 'block';
+            }
         },
 
         notif_playCard: function(notif) {

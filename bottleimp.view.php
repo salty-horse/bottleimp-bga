@@ -74,8 +74,8 @@ class view_bottleimp_bottleimp extends game_view {
             ]);
         }
 
-        $this->tpl['MY_HAND'] = self::_('My hand');
-        $this->tpl['MY_VISIBLE_HAND'] = self::_('My visible hand');
+        $this->tpl['YOUR_HAND'] = self::_('Your hand');
+        $this->tpl['YOUR_VISIBLE_HAND'] = self::_('Your visible hand');
         $this->tpl['TRUMP_RANK'] = self::_('Trump rank');
         $this->tpl['TRUMP_SUIT'] = self::_('Trump suit');
         $this->tpl['TRICKS_WON'] = self::_('Tricks won');

@@ -379,35 +379,40 @@ class BottleImp extends Table {
             throw new BgaUserException('You must unique cards');
 
         $cards_in_hand = $this->deck->getPlayerHand($player_id);
-        if (!in_array($left, array_keys($cards_in_hand)) ||
-            !in_array($right, array_keys($cards_in_hand)) ||
-            ($center && !in_array($center, array_keys($cards_in_hand))) ||
-            ($center2 && !in_array($center2, array_keys($cards_in_hand)))) {
+        if (array_diff($passed_cards, array_keys($cards_in_hand))) {
+            // array_diff returns items from the first array that are not in the second array
             throw new BgaUserException('You do not have this card');
-        }
-
-        $left_player_id = self::getPlayerAfter($player_id);
-        $right_player_id = self::getPlayerBefore($player_id);
-        $this->deck->moveCard($left, 'pass_from_right', $left_player_id);
-        $this->deck->moveCard($right, 'pass_from_left', $right_player_id);
-        $this->deck->moveCard($center, 'center');
-        if ($center2) {
-            $this->deck->moveCard($center2, 'center');
         }
 
         $pass_notify_args = [
             'cards' => $passed_cards,
             'card_left' => $cards_in_hand[$passed_cards[0]]['type_arg']/10,
             'card_right' => $cards_in_hand[$passed_cards[1]]['type_arg']/10,
-            'player_name1' => self::getPlayerNameById($left_player_id),
-            'player_name2' => self::getPlayerNameById($right_player_id),
         ];
+
+        $left_player_id = self::getPlayerAfter($player_id);
+        if ($player_count == 2) {
+            $this->deck->moveCard($left, 'pass_to_visible', $left_player_id);
+            $this->deck->moveCard($right, 'pass_to_hidden', $left_player_id);
+        } else {
+            $right_player_id = self::getPlayerBefore($player_id);
+            $this->deck->moveCard($left, 'pass_from_right', $left_player_id);
+            $this->deck->moveCard($right, 'pass_from_left', $right_player_id);
+            $pass_notify_args['player_name1'] = self::getPlayerNameById($left_player_id);
+            $pass_notify_args['player_name2'] = self::getPlayerNameById($right_player_id);
+        }
+
+        $this->deck->moveCard($center, 'center');
+        if ($center2) {
+            $this->deck->moveCard($center2, 'center');
+        }
 
         if ($pass_two) {
             $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, and ${card_right} to ${player_name2}');
         } else {
             $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick');
             if ($player_count == 2) {
+                $notif_message = clienttranslate('You passed ${card_left} to the visible hand, ${card_right} to the hidden hand, and ${cards_center} to the Devil\'s Trick');
                 $pass_notify_args['cards_center'] = implode(', ', array_slice($cards_center, 2));
             } else {
                 $pass_notify_args['card_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
@@ -548,15 +553,25 @@ class BottleImp extends Table {
 
         foreach ($players as $player_id => $player) {
             $left_player_id = self::getPlayerAfter($player_id);
-            $right_player_id = self::getPlayerBefore($player_id);
-            $card_from_left = $this->deck->getCardsInLocation('pass_from_left', $player_id);
-            $card_from_right = $this->deck->getCardsInLocation('pass_from_right', $player_id);
-            $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
-            $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
+
+            if (count($players == 2)) {
+                $notif_message = clienttranslate('You received ${card_left} to your visible hand, and ${card_right} to your hidden hand');
+                $card_from_left = $this->deck->getCardsInLocation('pass_to_visible', $player_id);
+                $card_from_right = $this->deck->getCardsInLocation('pass_to_hidden', $player_id);
+                $this->deck->moveAllCardsInLocation('pass_to_visible', 'eye', $player_id, $player_id);
+                $this->deck->moveAllCardsInLocation('pass_to_hidden', 'hand', $player_id, $player_id);
+            } else {
+                $notif_message = clienttranslate('You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}');
+                $right_player_id = self::getPlayerBefore($player_id);
+                $card_from_left = $this->deck->getCardsInLocation('pass_from_left', $player_id);
+                $card_from_right = $this->deck->getCardsInLocation('pass_from_right', $player_id);
+                $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
+                $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
+            }
 
             $visible_hands[$player_id] = $this->deck->getCardsInLocation('eye', $player_id);
 
-            self::notifyPlayer($player_id, 'takePassedCards', clienttranslate('You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}'), [
+            self::notifyPlayer($player_id, 'takePassedCards', $notif_message, [
                 'card_id_left' => array_keys($card_from_left)[0],
                 'card_id_right' => array_keys($card_from_right)[0],
                 'card_left' => array_values($card_from_left)[0]['type_arg']/10,
@@ -566,6 +581,7 @@ class BottleImp extends Table {
             ]);
         }
 
+        // TODO: Add visible passed cards of all players, for spectators
         self::notifyAllPlayers('visibleHandsPublic', '', [
             'visible_hands' => $visible_hands,
         ]);
