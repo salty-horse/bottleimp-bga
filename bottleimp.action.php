@@ -37,7 +37,7 @@ class action_bottleimp extends APP_GameAction {
         self::setAjaxMode();
         $left = self::getArg('left', AT_posint, true);
         $right = self::getArg('right', AT_posint, true);
-        $center = self::getArg('center', AT_posint, true);
+        $center = self::getArg('center', AT_posint, false);
         $center2 = self::getArg('center2', AT_posint, false);
         $this->game->passCards($left, $right, $center, $center2);
         self::ajaxResponse();

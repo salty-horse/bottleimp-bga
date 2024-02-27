@@ -688,7 +688,9 @@ class BottleImp extends Table {
 
         $bottle_owners = self::getObjectListFromDB('SELECT owner FROM bottles', true);
 
-        // Apply scores to player
+        $individual_scores = [];
+
+        // Calculate individual scores
         foreach ($players as $player_id => $player) {
             if (in_array($player_id, $bottle_owners)) {
                 if (count($bottle_owners) == 2 && $bottle_owners[0] == $bottle_owners[1]) {
@@ -703,6 +705,7 @@ class BottleImp extends Table {
                     }
                 }
                 $score_piles[$player_id]['points'] = -$points;
+                $individual_scores[$player_id] = -$points;
                 self::DbQuery("UPDATE player SET player_score=player_score-$points  WHERE player_id='$player_id'");
                 self::notifyAllPlayers('endHand', $lose_message, [
                     'player_id' => $player_id,
@@ -712,6 +715,7 @@ class BottleImp extends Table {
                 ]);
             } else {
                 $points = $score_piles[$player_id]['points'];
+                $individual_scores[$player_id] = $score_piles[$player_id]['points'];
                 self::DbQuery("UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'");
                 self::notifyAllPlayers('endHand', clienttranslate('${player_name} collected ${points} points'), [
                     'player_id' => $player_id,
@@ -719,6 +723,31 @@ class BottleImp extends Table {
                     'points' => $points,
                 ]);
             }
+        }
+
+        $score_object = $individual_scores;
+
+        // Calculate team scores
+        $teams = $this->getTeams();
+        if ($teams) {
+            $team_scores = [];
+            $player_team_scores = [];
+            $score_object = $player_team_scores;
+
+            foreach ($teams as $player_id => $team) {
+                if (!array_key_exists($team, $team_scores)) {
+                    $team_scores[$team] = 0;
+                }
+                $team_scores[$team] += $individual_scores[$player_id];
+            }
+            foreach ($teams as $player_id => $team) {
+                $player_team_scores[$player_id] = $team_scores[$team];
+            }
+        }
+
+        // Update scores in DB
+        foreach ($score_object as $player_id => $points) {
+            self::DbQuery("UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'");
         }
 
         $new_scores = self::getCollectionFromDb('SELECT player_id, player_score FROM player', true);
