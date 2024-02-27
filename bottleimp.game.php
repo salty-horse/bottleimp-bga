@@ -140,6 +140,7 @@ class BottleImp extends Table {
     */
     protected function getAllDatas()
     {
+        $state_name = $this->gamestate->state()['name'];
         $result = [
             'players' => [],
             'cards' => $this->cards,
@@ -151,27 +152,35 @@ class BottleImp extends Table {
 
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
-        $result['players'] = self::getCollectionFromDb('SELECT player_id id, player_score score FROM player');
+        $players = self::getCollectionFromDb('SELECT player_id id, player_score score FROM player');
+        $result['players'] = $players;
         $result['bottles'] = self::getCollectionFromDb('SELECT id, owner, price FROM bottles');
 
         // Cards in player hand
         $result['hand'] = $this->deck->getCardsInLocation('hand', $current_player_id);
+        if (count($players) == 2 && $state_name == 'passCards') {
+            // Usually this is sent in the public players array
+            $result['visible_hand'] = $this->deck->getCardsInLocation('eye', $current_player_id);
+        }
 
         // Cards played on the table
         $result['cardsontable'] = $this->deck->getCardsInLocation('cardsontable');
 
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
-        $result['totalRounds'] = count($result['players']) * $this->getGameStateValue('roundsPerPlayer');
+        $result['totalRounds'] = count($players) * $this->getGameStateValue('roundsPerPlayer');
         $result['firstPlayer'] = $this->getGameStateValue('firstPlayer');
         $result['dealer'] = $this->getDealer();
         $result['teams'] = $this->getTeams();
 
         $score_piles = $this->getScorePiles();
 
-        foreach ($result['players'] as &$player) {
+        foreach ($players as &$player) {
             $player_id = $player['id'];
             $player['tricks_won'] = $score_piles[$player_id]['tricks_won'];
             $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
+            if (count($players) == 2 && $state_name != 'passCards') {
+                $player['visible_hand'] = $this->deck->getCardsInLocation('eye', $player_id);
+            }
         }
 
         if ($this->gamestate->state()['name'] == 'passCards') {
@@ -482,7 +491,6 @@ class BottleImp extends Table {
         $this->deck->moveAllCardsInLocation(null, 'deck');
         $this->deck->shuffle('deck');
 
-        // TODO: Modify for 2 players
         // Deal cards
         $players = self::loadPlayersBasicInfos();
         $player_count = count($players);
@@ -503,7 +511,12 @@ class BottleImp extends Table {
                 $real_hand_size = $hand_size;
             }
             $hand_cards = $this->deck->pickCards($real_hand_size, 'deck', $player_id);
-            self::notifyPlayer($player_id, 'newHand', '', ['hand_cards' => $hand_cards]);
+            $args = ['hand_cards' => $hand_cards];
+            if ($player_count == 2) {
+                $eye_cards = $this->deck->pickCardsForLocation(6, 'deck', 'eye', $player_id);
+                $args['visible_hand'] = $eye_cards;
+            }
+            self::notifyPlayer($player_id, 'newHand', '', $args);
 
             // Give time before multiactive state
             self::giveExtraTime($player_id);
@@ -530,6 +543,9 @@ class BottleImp extends Table {
 
     function stTakePassedCards() {
         $players = self::loadPlayersBasicInfos();
+
+        $visible_hands = [];
+
         foreach ($players as $player_id => $player) {
             $left_player_id = self::getPlayerAfter($player_id);
             $right_player_id = self::getPlayerBefore($player_id);
@@ -537,6 +553,8 @@ class BottleImp extends Table {
             $card_from_right = $this->deck->getCardsInLocation('pass_from_right', $player_id);
             $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
             $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
+
+            $visible_hands[$player_id] = $this->deck->getCardsInLocation('eye', $player_id);
 
             self::notifyPlayer($player_id, 'takePassedCards', clienttranslate('You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}'), [
                 'card_id_left' => array_keys($card_from_left)[0],
@@ -547,6 +565,10 @@ class BottleImp extends Table {
                 'player_name2' => self::getPlayerNameById($right_player_id),
             ]);
         }
+
+        self::notifyAllPlayers('visibleHandsPublic', '', [
+            'visible_hands' => $visible_hands,
+        ]);
 
         $this->gamestate->changeActivePlayer($this->getGameStateValue('firstPlayer'));
         $this->gamestate->nextState();

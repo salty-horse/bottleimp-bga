@@ -59,6 +59,10 @@
     gap: 0px 60px;
 }
 
+.imp_visible_hand {
+    display: none;
+}
+
 #imp_passCards {
     /* display: flex; */
     align-items: center;
@@ -205,7 +209,7 @@
     height: var(--imp-card-height);
 }
 
-#imp_myhand_wrap {
+#imp_myhand_wrap, .imp_visible_hand {
     max-width: 1160px;
     margin: 10px auto;
 }

@@ -65,28 +65,10 @@ function (dojo, declare) {
             console.log('gamedatas', gamedatas);
 
             this.suitNames = {
-                1: _('red'),
-                2: _('blue'),
-                3: _('green'),
+                1: _('Red'),
+                2: _('Blue'),
+                3: _('Green'),
             };
-
-            // Set dynamic UI strings
-            // TODO: 2 players
-            // if (this.isSpectator) {
-            //     for (const player_info of Object.values(this.gamedatas.players)) {
-            //         this.setStrawmanPlayerLabel(player_info);
-            //     }
-            // } else {
-            //     this.setStrawmanPlayerLabel(gamedatas.players[gamedatas.opponent_id]);
-            // }
-
-            // Player hand
-            this.playerHand = new ebg.stock();
-            this.playerHand.setSelectionMode(1);
-            this.playerHand.centerItems = false;
-            this.playerHand.autowidth = true;
-            this.playerHand.create(this, $('imp_myhand'), this.cardWidth, this.cardHeight);
-            this.playerHand.image_items_per_row = 11;
 
             this.rankToSpritesheet = {
                 '1': 1, '2': 2, '2.5': 3, '4': 4, '4.5': 5, '5': 6, '7': 7, '9': 8, '12': 9, '12.5': 10,
@@ -95,6 +77,22 @@ function (dojo, declare) {
                 '30.5': 33, '32': 34, '32.5': 35, '35': 36, '11': 37, '14': 38, '14.5': 39, '16': 40, '16.5': 41, '21': 42, '24': 43,
                 '24.5': 44, '26': 45, '26.5': 46, '29': 47, '31': 48, '33': 49, '34': 50, '34.5': 51, '36': 52, '36.5': 53, '37': 54
             };
+
+            this.playerCount = gamedatas.playerorder.length;
+
+            // The player order array mixes strings and numbers
+            let playerorder = gamedatas.playerorder.map(x => parseInt(x));
+            let playerPos = playerorder.indexOf(this.player_id);
+
+            // Card stocks
+            this.playerHand = this.initHandStock($('imp_myhand'));
+            if (this.playerCount == 2) {
+                this.visibleHands = {};
+                for (let player_id of playerorder) {
+                    this.visibleHands[player_id] =
+                        this.initHandStock(document.getElementById(`imp_player_${player_id}_visible_hand`));
+                }
+            }
 
             dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
@@ -119,48 +117,58 @@ function (dojo, declare) {
                 this.markActivePassBox(e.currentTarget.dataset.passType);
             });
 
-            // The player order array mixes strings and numbers
-            let playerorder = gamedatas.playerorder.map(x => parseInt(x));
-            let playerPos = playerorder.indexOf(this.player_id);
-
-            this.playersPassedCards = [];
-            this.passPlayers = {};
-            this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = 'left';
-            this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = 'right';
-            document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = _("Devil's Trick");
-            // TODO: Are tooltips necessary?
-            // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
-
+            // Set dynamic UI strings
             if (this.playerCount == 2) {
-                // TODO: Tooltips
-                this.passKeys = ['left', 'center', 'center2', 'right'];
-            } else if (this.playerCount != 5) {
-                this.passKeys = ['left', 'center', 'right'];
-            } else {
-                // Set inside onEnteringState
-            }
-
-            for (let [player_id, pos] of Object.entries(this.passPlayers)) {
-                let player_info = gamedatas.players[player_id];
-                document.querySelector(`#imp_pass_${pos} > .imp_playertablename`).innerHTML = dojo.string.substitute(
-                    "${player_name}",
-                    {player_name: `<span style="color:#${player_info.color}">${player_info.name}</span>`});
-
-                if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id) == -1) {
-                    this.playersPassedCards.push(player_id);
+                if (this.isSpectator) {
+                    for (const player_info of Object.values(this.gamedatas.players)) {
+                        this.setVisibleHandPlayerLabel(player_info);
+                    }
+                } else {
+                    let opponent_id = playerorder[1 - playerPos];
+                    let opponent_name_color = this.format_block('jstpl_player_name', this.gamedatas.players[opponent_id]);
+                    this.setVisibleHandPlayerLabel(gamedatas.players[opponent_id]);
+                    document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
+                        _("${player_name}'s visible hand").replace('${player_name}', opponent_name_color);
+                    document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                        _("${player_name}'s hidden hand").replace('${player_name}', opponent_name_color);
                 }
             }
 
-            // Create cards types
-            for (let card of Object.values(gamedatas.cards)) {
-                this.playerHand.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
+            if (!this.isSpectator) {
+                this.playersPassedCards = [];
+                let devilsTrickLabel = _("Devil's Trick")
+                document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = devilsTrickLabel;
+                // TODO: Are tooltips necessary?
+                // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
+
+                if (this.playerCount == 2) {
+                    // TODO: Tooltips
+                    this.passKeys = ['left', 'center', 'center2', 'right'];
+                    document.querySelector('#imp_pass_center2 > .imp_playertablename').innerHTML = devilsTrickLabel;
+                } else {
+                    // For 5 players, this is set inside onEnteringState
+                    if (this.playerCount != 5) {
+                        this.passKeys = ['left', 'center', 'right'];
+                    }
+                    this.passPlayers = {};
+                    this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = 'left';
+                    this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = 'right';
+
+                    for (let [player_id, pos] of Object.entries(this.passPlayers)) {
+                        let player_info = gamedatas.players[player_id];
+                        document.querySelector(`#imp_pass_${pos} > .imp_playertablename`).innerHTML = dojo.string.substitute(
+                            "${player_name}",
+                            {player_name: this.format_block('jstpl_player_name', player_info)});
+
+                        if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id) == -1) {
+                            this.playersPassedCards.push(player_id);
+                        }
+                    }
+                }
             }
 
             // Cards in player's hand
-            this.initPlayerHand(this.gamedatas.hand);
-
-            // Mapping between strawmen card IDs and elements
-            this.strawmenById = {};
+            this.initHand(this.playerHand, this.gamedatas.hand);
 
             this.tricksWon = {};
             this.handSizes = {};
@@ -180,11 +188,19 @@ function (dojo, declare) {
                 hand_size_counter.create(`imp_player_hand_size_${player_id}`);
                 hand_size_counter.setValue(player_info.hand_size);
 
-                // Strawmen
-                // TODO: 2p
-                // this.initStrawmen(player_id, player_info.visible_strawmen, player_info.more_strawmen);
+                if (player_info.visible_hand) {
+                    this.initHand(this.visibleHands[player_id], player_info.visible_hand);
+                }
             }
             this.addTooltipToClass('imp_hand_size', _('Number of cards in hand'), '');
+
+            if (this.gamedatas.visible_hand) {
+                this.initHand(this.visibleHands[this.player_id], this.gamedatas.visible_hand);
+            }
+            
+            if (this.playerCount == 2 && !this.isSpectator) {
+                document.getElementById(`imp_player_${this.player_id}_visible_hand_wrap`).style.display = 'block';
+            }
 
             // Cards played on table
             for (let i in this.gamedatas.cardsontable) {
@@ -376,13 +392,14 @@ function (dojo, declare) {
             }
         },
 
-        initPlayerHand: function(card_list) {
+        initHand: function(stock, card_list) {
+            stock.removeAll();
             for (let i in card_list) {
                 let card = card_list[i];
                 let rank = card.type_arg / 10;
-                this.playerHand.addToStockWithId(rank, card.id);
+                stock.addToStockWithId(rank, card.id);
             }
-            this.updateStockOverlap();
+            this.updateStockOverlap(stock);
         },
 
         putCardOnTable: function(player_id, card_id) {
@@ -399,26 +416,19 @@ function (dojo, declare) {
         playCardOnTable: function(player_id, card_id) {
             this.putCardOnTable(player_id, card_id);
 
-            let strawElem = this.strawmenById[card_id];
-            if (strawElem) {
-                this.placeOnObject('imp_cardontable_' + player_id, strawElem.id);
-                strawElem.remove();
-                delete this.strawmenById[card_id];
+            if (player_id != this.player_id) {
+                // Some opponent played a card
+                // Move card from player panel
+                this.placeOnObject('imp_cardontable_' + player_id, 'overall_player_board_' + player_id);
             } else {
-                if (player_id != this.player_id) {
-                    // Some opponent played a card
-                    // Move card from player panel
-                    this.placeOnObject('imp_cardontable_' + player_id, 'overall_player_board_' + player_id);
-                } else {
-                    // You played a card. If it exists in your hand, move card from there and remove
-                    // corresponding item
-                    if ($('imp_myhand_item_' + card_id)) {
-                        this.placeOnObject('imp_cardontable_' + player_id, 'imp_myhand_item_' + card_id);
-                        this.playerHand.removeFromStockById(card_id);
-                    }
+                // You played a card. If it exists in your hand, move card from there and remove
+                // corresponding item
+                if ($('imp_myhand_item_' + card_id)) {
+                    this.placeOnObject('imp_cardontable_' + player_id, 'imp_myhand_item_' + card_id);
+                    this.playerHand.removeFromStockById(card_id);
                 }
-                this.handSizes[player_id].incValue(-1);
             }
+            this.handSizes[player_id].incValue(-1);
 
             // In any case: move it to its final destination
             this.slideToObject('imp_cardontable_' + player_id, 'imp_playertablecard_' + player_id).play();
@@ -539,16 +549,16 @@ function (dojo, declare) {
 
         // Copied from Tichu
         // TODO: Call on window resize
-        updateStockOverlap: function() {
+        updateStockOverlap: function(stock) {
             const availableWidthForOverlapPerItem =
-              (this.playerHand.container_div.clientWidth - (this.playerHand.item_width + this.playerHand.item_margin)) /
-              (this.playerHand.items.length - 1);
+              (stock.container_div.clientWidth - (stock.item_width + stock.item_margin)) /
+              (stock.items.length - 1);
             let overlap = Math.floor(
-              ((availableWidthForOverlapPerItem - this.playerHand.item_margin - 1) / this.playerHand.item_width) * 100
+              ((availableWidthForOverlapPerItem - stock.item_margin - 1) / stock.item_width) * 100
             );
             if (overlap > 60) overlap = 60;
             if (overlap < 12) overlap = 12;
-            this.playerHand.setOverlap(overlap, 0);
+            stock.setOverlap(overlap, 0);
         },
 
         getSpriteXY: function(card_id) {
@@ -557,6 +567,21 @@ function (dojo, declare) {
                 x: this.cardWidth * (pos % 11),
                 y: this.cardHeight * Math.floor(pos / 11),
             }
+        },
+
+        initHandStock: function(container) {
+            let stock = new ebg.stock();
+            stock.setSelectionMode(1);
+            stock.centerItems = false;
+            stock.autowidth = true;
+            stock.create(this, container, this.cardWidth, this.cardHeight);
+            stock.image_items_per_row = 11;
+
+            for (let card of Object.values(this.gamedatas.cards)) {
+                stock.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
+            }
+
+            return stock;
         },
 
         initBottles: function() {
@@ -594,6 +619,11 @@ function (dojo, declare) {
 
         markDealer: function() {
             // TODO: mark new dealer
+        },
+
+        setVisibleHandPlayerLabel: function(player_info) {
+            document.querySelector(`#imp_player_${player_info.id}_visible_hand_wrap > h3`).innerHTML =
+                _("${player_name}'s visible hand").replace('${player_name}', this.format_block('jstpl_player_name', player_info));
         },
 
         // /////////////////////////////////////////////////
@@ -665,6 +695,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('passCards');
             dojo.subscribe('takePassedCards', this, 'notif_takePassedCards');
             this.notifqueue.setSynchronous('takePassedCards');
+            dojo.subscribe('visibleHandsPublic', this, 'notif_visibleHandsPublic');
             dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
             dojo.subscribe('trickWin', this, 'notif_trickWin');
@@ -698,8 +729,7 @@ function (dojo, declare) {
         },
 
         notif_newHand: function(notif) {
-            this.playerHand.removeAll();
-            this.initPlayerHand(notif.args.hand_cards);
+            this.initHand(this.playerHand, notif.args.hand_cards);
         },
 
         notif_passCardsPrivate: async function(notif) {
@@ -766,6 +796,10 @@ function (dojo, declare) {
             document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'block');
 
             this.notifqueue.setSynchronousDuration(0);
+        },
+
+        notif_visibleHandsPublic: function(notif) {
+            // TODO
         },
 
         notif_playCard: function(notif) {

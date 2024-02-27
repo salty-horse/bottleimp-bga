@@ -25,6 +25,12 @@
 
 <div id="imp_centerarea">
 
+<div id="imp_player_{TOP_PLAYER_ID}_visible_hand_wrap" class="imp_visible_hand whiteblock">
+    <h3>Opponent's visible hand</h3>
+    <div id="imp_player_{TOP_PLAYER_ID}_visible_hand">
+    </div>
+</div>
+
 <!-- BEGIN player -->
 <div id="imp_playertable_{PLAYER_ID}" class="imp_playertable whiteblock">
     <div class="imp_playertablename" style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</div>
@@ -55,13 +61,13 @@
     </div>
 </div>
 
+<div id="imp_player_{BOTTOM_PLAYER_ID}_visible_hand_wrap" class="imp_visible_hand whiteblock">
+    <h3>{MY_VISIBLE_HAND}</h3>
+    <div id="imp_player_{BOTTOM_PLAYER_ID}_visible_hand">
+    </div>
+</div>
 
 <script type="text/javascript">
-const elem = document.createElement('link');
-elem.rel = 'stylesheet';
-elem.href = 'https://fonts.googleapis.com/css?family=Stint+Ultra+Condensed&text=0123456789.';
-document.head.appendChild(elem);
-
 // Javascript HTML templates
 
 var jstpl_player_hand_size = '<div class="imp_hand_size">\
@@ -72,6 +78,8 @@ var jstpl_player_hand_size = '<div class="imp_hand_size">\
 var jstpl_cardontable = '<div class="imp_cardontable" id="${id}" style="background-position:-${x}px -${y}px"></div>';
 
 var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle"><span>${price}</span></div>';
+
+var jstpl_player_name = '<span style="color:#${color}">${name}</span>'
 
 </script>
 

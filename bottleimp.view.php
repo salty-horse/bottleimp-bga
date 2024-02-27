@@ -61,15 +61,21 @@ class view_bottleimp_bottleimp extends game_view {
             }
         }
 
+        if (count($players) == 2) {
+            $pass_types = ['left', 'center', 'center2', 'right'];
+        } else {
+            $pass_types = ['left', 'center', 'right'];
+        }
+
         $this->page->begin_block($template, 'pass');
-        foreach (['left', 'center', 'right'] as $pass_type) {
+        foreach ($pass_types as $pass_type) {
             $this->page->insert_block('pass', [
                 'PASS_TYPE' => $pass_type,
             ]);
         }
 
         $this->tpl['MY_HAND'] = self::_('My hand');
-        $this->tpl['MY_STRAWMEN'] = self::_('My strawmen');
+        $this->tpl['MY_VISIBLE_HAND'] = self::_('My visible hand');
         $this->tpl['TRUMP_RANK'] = self::_('Trump rank');
         $this->tpl['TRUMP_SUIT'] = self::_('Trump suit');
         $this->tpl['TRICKS_WON'] = self::_('Tricks won');
