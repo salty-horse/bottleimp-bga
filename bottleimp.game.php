@@ -294,7 +294,7 @@ class BottleImp extends Table {
         $team_info = $this->teamModes[$player_count] ?? null;
         if (!$team_info)
             return null;
-        $teams = $team_info[self::getGameStateValue($team_info['opt'])];
+        $teams = $team_info[self::getGameStateValue($team_info['opt'])] ?? null;
         if (!$teams) {
             return null;
         }
@@ -498,9 +498,9 @@ class BottleImp extends Table {
         }
         foreach ($players as $player_id => $player) {
             if ($player_count == 5 && $player_id == $dealer) {
-                $real_hand_size = $hand_size;
-            } else {
                 $real_hand_size = $hand_size - 1;
+            } else {
+                $real_hand_size = $hand_size;
             }
             $hand_cards = $this->deck->pickCards($real_hand_size, 'deck', $player_id);
             self::notifyPlayer($player_id, 'newHand', '', ['hand_cards' => $hand_cards]);

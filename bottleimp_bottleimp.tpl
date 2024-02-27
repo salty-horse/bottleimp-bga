@@ -17,7 +17,7 @@
 
 <div id="imp_info_box" class="whiteblock">
     <div>Round: <span id="imp_round_number">1</span>/<span id="imp_total_rounds">6</span></div>
-    <div>Bottle price:</div>
+	<div><span id="imp_price_label">Bottle price</span>:</div>
     <div id="imp_max_bottle_price">19</div>
     <div id="imp_bottles" style="">
     </div>
@@ -72,7 +72,7 @@ var jstpl_player_hand_size = '<div class="imp_hand_size">\
 
 var jstpl_cardontable = '<div class="imp_cardontable" id="${id}" style="background-position:-${x}px -${y}px"></div>';
 
-var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle">${price}</div>';
+var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle"><span>${price}</span></div>';
 
 </script>
 

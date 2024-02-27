@@ -47,7 +47,7 @@
     --imp-card-width: 143px;
     --imp-card-height: 200px;
     --imp-bottle-width: 40px;
-    --imp-bottle-height: 76px;
+    --imp-bottle-height: 84px;
 }
 
 
@@ -84,26 +84,31 @@
 .imp_bottle {
     width: var(--imp-bottle-width);
     height: var(--imp-bottle-height);
-    background-color: blue;
+    background-image: url('img/bottles.png');
     display: flex;
     justify-content: center;
     align-content: center;
     flex-direction: column;
     color: white;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: bold;
-    -webkit-text-stroke: 0.2px black;
-    text-stroke: 0.2px black;
+    -webkit-text-stroke: 1px black;
+    text-stroke: 1px black;
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.8), 0px 0px 2px rgba(0,0,0,1);
     z-index: 50;
     position: relative;
     user-select: none;
 }
 
+.imp_bottle span {
+    position: relative;
+    top: 20%;
+}
+
 #imp_bottle_1 {
-    background-color: blue;
 }
 #imp_bottle_2 {
-    background-color: teal;
+    background-position: calc(0px - var(--imp-bottle-width)) 0px
 }
 
 #imp_centerarea {
@@ -149,11 +154,13 @@
 }
 
 .imp_bottle_slot {
+    display: flex;
+    flex-wrap: wrap-reverse;
     position: absolute;
     bottom: 0;
     right: 0;
     width: var(--imp-bottle-width);
-    height: var(--imp-bottle-height);
+    height: calc(2*var(--imp-bottle-height));
 }
 
 .imp_cardontable {
@@ -161,7 +168,7 @@
     z-index: 2;
     width: var(--imp-card-width);
     height: var(--imp-card-height);
-    background-image: url('img/cards.jpg'); 
+    background-image: url('img/cards.jpg');
     border-radius: 6px;
     box-shadow: 2px 2px 5px 3px #666;
 }

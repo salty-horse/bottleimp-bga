@@ -96,6 +96,9 @@ function (dojo, declare) {
             // Info box
             document.getElementById('imp_round_number').textContent = this.gamedatas.roundNumber;
             document.getElementById('imp_total_rounds').textContent = this.gamedatas.totalRounds;
+            if (gamedatas.bottles[2]) {
+                document.getElementById('imp_price_label').textContent = _('Top bottle price');
+            }
             this.initBottles();
 
             // Init pass boxes
@@ -328,6 +331,41 @@ function (dojo, declare) {
             let suit_id = this.suitSymbolToId[suit_symbol];
             let suit_name = this.suitNames[suit_id];
             return `<div role="img" title="${suit_name}" aria-label="${suit_name}" class="imp_log_suit imp_suit_icon_${suit_id}"></div>`;
+        },
+
+        animateFrom: function(elem, oldPos, duration = 500) {
+            if (this.instantaneousMode || !elem.animate) {
+                return;
+            }
+            const newPos = elem.getBoundingClientRect();
+            const translateX = oldPos.x - newPos.x;
+            const translateY = oldPos.y - newPos.y;
+            if (translateX == 0 && translateY == 0)
+                return;
+            elem.animate([
+                {transform: `translate(${translateX}px, ${translateY}px)`},
+                {transform: 'none'}
+
+            ], {duration: duration}).play();
+        },
+
+        prepareDivSlide: function(elem) {
+            if (this.instantaneousMode || !elem.animate) {
+                return;
+            }
+            let wm = new WeakMap();
+            for (const item of elem.children) {
+                wm.set(item, item.getBoundingClientRect());
+            }
+            return {elem: elem, items: wm};
+        },
+
+        animateDivSlide: function(o) {
+            for (const item of o.elem.children) {
+                let rect = o.items.get(item);
+                if (!rect) continue;
+                this.animateFrom(item, rect);
+            }
         },
 
         initPlayerHand: function(card_list) {
@@ -732,24 +770,29 @@ function (dojo, declare) {
             let bottle_id = notif.args.bottle_id;
             let bottle_info = this.gamedatas.bottles[bottle_id];
             if (bottle_id) {
-                let bottle_elem = document.getElementById(`imp_bottle_${bottle_id}`);
+                let bottleElem = document.getElementById(`imp_bottle_${bottle_id}`);
                 if (notif.args.price != bottle_info.price) {
                     bottle_info.price = notif.args.price;
-                    bottle_elem.textContent = notif.args.price;
+                    bottleElem.firstChild.textContent = notif.args.price;
                     document.getElementById('imp_max_bottle_price').textContent =
                         Math.max(...Object.values(this.gamedatas.bottles).map(b => b.price), 0);
                 }
 
                 if (winner_id != bottle_info.owner) {
                     bottle_info.owner = winner_id;
-                    let target_elem = document.getElementById(`imp_bottle_slot_${winner_id}`);
-                    let anim = this.slideToObject(bottle_elem, target_elem);
-                    dojo.connect(anim, 'onEnd', () => {
-                        bottle_elem.remove()
-                        bottle_elem.style.top = bottle_elem.style.left = 0;
-                        target_elem.appendChild(bottle_elem);
-                    });
-                    anim.play()
+                    let sourceSlot = bottleElem.parentElement;
+                    let targetSlot = document.getElementById(`imp_bottle_slot_${winner_id}`);
+                    this.gamedatas.bottles[bottle_id].owner = winner_id;
+                    let oldPos = bottleElem.getBoundingClientRect();
+                    let sourceSlotAnim = this.prepareDivSlide(sourceSlot);
+                    let targetSlotAnim = this.prepareDivSlide(targetSlot);
+
+                    bottleElem.remove()
+                    targetSlot.appendChild(bottleElem);
+
+                    this.animateFrom(bottleElem, oldPos);
+                    this.animateDivSlide(sourceSlotAnim);
+                    this.animateDivSlide(targetSlotAnim);
                 }
             }
 
