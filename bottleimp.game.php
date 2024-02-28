@@ -224,9 +224,17 @@ class BottleImp extends Table {
     }
 
     function getPlayableCards($player_id) {
-        // TODO: Modify for 2 players
+        $cards_hand = $this->getPlayableCardsForHand($player_id, 'hand');
+        if ($this->getPlayerCount() != 2) {
+            return $cards_hand;
+        }
+        $playable_cards_eye = $this->getPlayableCardsForHand($player_id, 'hand');
+        return [...$cards_hahd, ...$cards_eye];
+    }
+
+    function getPlayableCardsForHand($player_id, $hand_name) {
         // Collect all cards in hand
-        $available_cards = $this->deck->getPlayerHand($player_id);
+        $available_cards = $this->deck->getCardsInLocation($hand_name, $player_id);
         $led_suit = self::getGameStateValue('ledSuit');
         if ($led_suit == 0) {
             return $available_cards;
@@ -866,13 +874,12 @@ class BottleImp extends Table {
     {
         $state_name = $state['name'];
 
-        // TODO - modify for 2 players, and when the dealer doesn't discard to the devil's trick
         if ($state_name == 'passCards') {
             // Pass random cards
             $cards_in_hand = $this->deck->getPlayerHand($active_player);
             $player_count = $this->getPlayerCount();
             if ($player_count == 2) {
-                // TODO 2 players
+                $card_count = 4;
             } else {
                 if ($player_count == 5 && $active_player == $this->getDealer()) {
                     $card_count = 2;

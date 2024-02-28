@@ -689,8 +689,6 @@ function (dojo, declare) {
 
         */
         setupNotifications: function() {
-            console.log('notifications subscriptions setup');
-
             dojo.subscribe('newHand', this, 'notif_newHand');
             dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
             dojo.subscribe('passCardsPrivate', this, 'notif_passCardsPrivate');
