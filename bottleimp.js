@@ -233,7 +233,9 @@ function (dojo, declare) {
                     document.querySelectorAll('.imp_visible_hand').forEach(e => e.style.display = 'none');
                     break;
                 }
-                document.getElementById(`imp_player_${this.opponent_id}_visible_hand_wrap`).style.display = 'none';
+                if (this.playerCount == 2) {
+                    document.getElementById(`imp_player_${this.opponent_id}_visible_hand_wrap`).style.display = 'none';
+                }
                 document.getElementById('imp_passCards').style.display = 'flex';
                 if (this.isCurrentPlayerActive()) {
                     if (this.playerCount == 5) {
@@ -689,22 +691,26 @@ function (dojo, declare) {
 
         */
         setupNotifications: function() {
-            dojo.subscribe('newHand', this, 'notif_newHand');
-            dojo.subscribe('newHandPublic', this, 'notif_newHandPublic');
-            dojo.subscribe('passCardsPrivate', this, 'notif_passCardsPrivate');
+            [
+                'newHand',
+                'newHandPublic',
+                'passCardsPrivate',
+                'passCards',
+                'takePassedCards',
+                'visibleHandsPublic',
+                'playCard',
+                'trickWin',
+                // 'endHand',
+                'newScores',
+            ].forEach((n) => {
+                dojo.subscribe(n, this, `notif_${n}`);
+            });
             this.notifqueue.setSynchronous('passCardsPrivate');
-            dojo.subscribe('passCards', this, 'notif_passCards');
             this.notifqueue.setSynchronous('passCards');
-            dojo.subscribe('takePassedCards', this, 'notif_takePassedCards');
             this.notifqueue.setSynchronous('takePassedCards');
-            dojo.subscribe('visibleHandsPublic', this, 'notif_visibleHandsPublic');
-            dojo.subscribe('playCard', this, 'notif_playCard');
             this.notifqueue.setSynchronous('playCard', 1000);
-            dojo.subscribe('trickWin', this, 'notif_trickWin');
             this.notifqueue.setSynchronous('trickWin', 0);
             this.notifqueue.setSynchronous('giveAllCardsToPlayer', 1000);
-            // dojo.subscribe('endHand', this, 'notif_endHand');
-            dojo.subscribe('newScores', this, 'notif_newScores');
         },
 
         notif_newHandPublic: function(notif) {
