@@ -23,19 +23,19 @@
     </div>
 </div>
 
-<div id="imp_centerarea">
-
 <div id="imp_player_{TOP_PLAYER_ID}_visible_hand_wrap" class="imp_visible_hand whiteblock">
     <h3>Opponent's visible hand</h3>
-    <div id="imp_player_{TOP_PLAYER_ID}_visible_hand">
-    </div>
+    <div id="imp_player_{TOP_PLAYER_ID}_visible_hand"></div>
 </div>
+
+<div id="imp_centerarea">
 
 <!-- BEGIN player -->
 <div id="imp_playertable_{PLAYER_ID}" class="imp_playertable whiteblock">
     <div class="imp_playertablename" style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</div>
     <div id="imp_playertable_team_{PLAYER_ID}" class="imp_team_label">Team A</div>
     <div class="imp_playertablecard" id="imp_playertablecard_{PLAYER_ID}"></div>
+    <div class="imp_playertablecard imp_second_card_slot" id="imp_playertablecard_{PLAYER_ID}_2"></div>
     <span class="imp_playertable_info">
         <span>{TRICKS_WON}: </span>
         <span id="imp_score_pile_{PLAYER_ID}"></span>
@@ -55,6 +55,7 @@
 
 </div>
 
+<div id="imp_my_hands">
 <div id="imp_myhand_wrap" class="whiteblock">
     <h3>{YOUR_HAND}</h3>
     <div id="imp_myhand">
@@ -65,6 +66,7 @@
     <h3>{YOUR_VISIBLE_HAND}</h3>
     <div id="imp_player_{BOTTOM_PLAYER_ID}_visible_hand">
     </div>
+</div>
 </div>
 
 <script type="text/javascript">

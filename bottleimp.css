@@ -129,7 +129,6 @@
 
 .imp_playertable {
     text-align: center;
-    width: 180px;
     position: relative;
 }
 
@@ -146,8 +145,7 @@
 .imp_playertablecard {
     display: inline-block;
     position: relative;
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin: 5px;
     width: var(--imp-card-width);
     height: var(--imp-card-height);
 }
@@ -207,6 +205,10 @@
     box-shadow: 1px 1px 1px 1px black;
     width: var(--imp-card-width);
     height: var(--imp-card-height);
+}
+
+#imp_myhands {
+    display: flex;
 }
 
 #imp_myhand_wrap, .imp_visible_hand {

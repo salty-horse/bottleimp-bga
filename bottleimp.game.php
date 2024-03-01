@@ -153,18 +153,22 @@ class BottleImp extends Table {
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $players = self::getCollectionFromDb('SELECT player_id id, player_score score FROM player');
-        $result['players'] = $players;
+        $result['players'] = &$players;
         $result['bottles'] = self::getCollectionFromDb('SELECT id, owner, price FROM bottles');
 
         // Cards in player hand
         $result['hand'] = $this->deck->getCardsInLocation('hand', $current_player_id);
         if (count($players) == 2 && $state_name == 'passCards') {
             // Usually this is sent in the public players array
-            $result['visible_hand'] = $this->deck->getCardsInLocation('eye', $current_player_id);
+            $result['visible_hand'] = $this->deck->getCardsInLocation('hand_eye', $current_player_id);
         }
 
         // Cards played on the table
         $result['cardsontable'] = $this->deck->getCardsInLocation('cardsontable');
+
+        if (count($players) == 2) {
+            $result['cardsontable_2'] = $this->deck->getCardsInLocation('cardsontable_2');
+        }
 
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
         $result['totalRounds'] = count($players) * $this->getGameStateValue('roundsPerPlayer');
@@ -179,7 +183,7 @@ class BottleImp extends Table {
             $player['tricks_won'] = $score_piles[$player_id]['tricks_won'];
             $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
             if (count($players) == 2 && $state_name != 'passCards') {
-                $player['visible_hand'] = $this->deck->getCardsInLocation('eye', $player_id);
+                $player['visible_hand'] = $this->deck->getCardsInLocation('hand_eye', $player_id);
             }
         }
 
@@ -212,10 +216,6 @@ class BottleImp extends Table {
     //////////// Utilities
     ////////////
 
-    function getPlayerCount() {
-        return self::getUniqueValueFromDB('select count(*) from player');
-    }
-
     function getBottlePriceAndOwner() {
         return self::getObjectFromDb(
             'SELECT id, owner, price FROM bottles ' .
@@ -225,11 +225,11 @@ class BottleImp extends Table {
 
     function getPlayableCards($player_id) {
         $cards_hand = $this->getPlayableCardsForHand($player_id, 'hand');
-        if ($this->getPlayerCount() != 2) {
+        if ($this->getPlayersNumber() != 2) {
             return $cards_hand;
         }
-        $playable_cards_eye = $this->getPlayableCardsForHand($player_id, 'hand');
-        return [...$cards_hahd, ...$cards_eye];
+        $cards_eye = $this->getPlayableCardsForHand($player_id, 'hand_eye');
+        return $cards_hand + $cards_eye;
     }
 
     function getPlayableCardsForHand($player_id, $hand_name) {
@@ -301,13 +301,13 @@ class BottleImp extends Table {
 
     function getTeams() {
         $teams = self::getCollectionFromDb('SELECT player_id, team FROM player', true);
-        if ($teams[array_key_first($teams)] == null)
+        if ($teams[array_key_first($teams)] == 0)
             return null;
         return $teams;
     }
 
     function assignTeams() {
-        $player_count = $this->getPlayerCount();
+        $player_count = $this->getPlayersNumber();
         $team_info = $this->teamModes[$player_count] ?? null;
         if (!$team_info)
             return null;
@@ -352,7 +352,7 @@ class BottleImp extends Table {
     function passCardsFromPlayer($player_id, $left, $right, $center, $center2) {
         self::checkAction('passCards');
 
-        $player_count = $this->getPlayerCount();
+        $player_count = $this->getPlayersNumber();
         if ($player_count == 2) {
             if (!$center2)
                 throw new BgaUserException('You must pass 4 cards');
@@ -381,7 +381,6 @@ class BottleImp extends Table {
                 $passed_cards[] = $center2;
             }
         }
-        $cards_center = array_slice($passed_cards, 2);
 
         if (count(array_unique($passed_cards)) != count($passed_cards))
             throw new BgaUserException('You must unique cards');
@@ -421,7 +420,7 @@ class BottleImp extends Table {
             $notif_message = clienttranslate('You passed ${card_left} to ${player_name1}, ${card_right} to ${player_name2}, and ${card_center} to the Devil\'s Trick');
             if ($player_count == 2) {
                 $notif_message = clienttranslate('You passed ${card_left} to the visible hand, ${card_right} to the hidden hand, and ${cards_center} to the Devil\'s Trick');
-                $pass_notify_args['cards_center'] = implode(', ', array_slice($cards_center, 2));
+                $pass_notify_args['cards_center'] = implode(', ', array_slice($passed_cards, 2));
             } else {
                 $pass_notify_args['card_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
             }
@@ -458,7 +457,14 @@ class BottleImp extends Table {
             throw new BgaUserException('You cannot play this card');
         }
 
-        $this->deck->moveCard($card_id, 'cardsontable', $player_id);
+        if ($this->getPlayersNumber() != 2) {
+            $this->deck->moveCard($card_id, 'cardsontable', $player_id);
+        } else {
+            $target = ($this->deck->countCardInLocation('cardsontable', $player_id) == 0) ?
+                'cardsontable' : 'cardsontable_2';
+            $this->deck->moveCard($card_id, $target, $player_id);
+        }
+
         if (self::getGameStateValue('ledSuit') == 0)
             self::setGameStateValue('ledSuit', $current_card['type']);
         self::notifyAllPlayers('playCard', clienttranslate('${player_name} plays ${value} ${suit}'), [
@@ -526,7 +532,7 @@ class BottleImp extends Table {
             $hand_cards = $this->deck->pickCards($real_hand_size, 'deck', $player_id);
             $args = ['hand_cards' => $hand_cards];
             if ($player_count == 2) {
-                $eye_cards = $this->deck->pickCardsForLocation(6, 'deck', 'eye', $player_id);
+                $eye_cards = $this->deck->pickCardsForLocation(6, 'deck', 'hand_eye', $player_id);
                 $args['visible_hand'] = $eye_cards;
             }
             self::notifyPlayer($player_id, 'newHand', '', $args);
@@ -562,11 +568,15 @@ class BottleImp extends Table {
         foreach ($players as $player_id => $player) {
             $left_player_id = self::getPlayerAfter($player_id);
 
-            if (count($players == 2)) {
+            $notify_args = [
+                'player_name1' => self::getPlayerNameById($left_player_id),
+            ];
+
+            if (count($players) == 2) {
                 $notif_message = clienttranslate('You received ${card_left} to your visible hand, and ${card_right} to your hidden hand');
                 $card_from_left = $this->deck->getCardsInLocation('pass_to_visible', $player_id);
                 $card_from_right = $this->deck->getCardsInLocation('pass_to_hidden', $player_id);
-                $this->deck->moveAllCardsInLocation('pass_to_visible', 'eye', $player_id, $player_id);
+                $this->deck->moveAllCardsInLocation('pass_to_visible', 'hand_eye', $player_id, $player_id);
                 $this->deck->moveAllCardsInLocation('pass_to_hidden', 'hand', $player_id, $player_id);
             } else {
                 $notif_message = clienttranslate('You received ${card_left} from ${player_name1}, and ${card_right} from ${player_name2}');
@@ -575,18 +585,17 @@ class BottleImp extends Table {
                 $card_from_right = $this->deck->getCardsInLocation('pass_from_right', $player_id);
                 $this->deck->moveAllCardsInLocation('pass_from_left', 'hand', $player_id, $player_id);
                 $this->deck->moveAllCardsInLocation('pass_from_right', 'hand', $player_id, $player_id);
+                $notify_args['player_name2'] = self::getPlayerNameById($right_player_id);
             }
 
-            $visible_hands[$player_id] = $this->deck->getCardsInLocation('eye', $player_id);
+            $notify_args['card_id_left'] = array_keys($card_from_left)[0];
+            $notify_args['card_id_right'] = array_keys($card_from_right)[0];
+            $notify_args['card_left'] = array_values($card_from_left)[0]['type_arg']/10;
+            $notify_args['card_right'] = array_values($card_from_right)[0]['type_arg']/10;
 
-            self::notifyPlayer($player_id, 'takePassedCards', $notif_message, [
-                'card_id_left' => array_keys($card_from_left)[0],
-                'card_id_right' => array_keys($card_from_right)[0],
-                'card_left' => array_values($card_from_left)[0]['type_arg']/10,
-                'card_right' => array_values($card_from_right)[0]['type_arg']/10,
-                'player_name1' => self::getPlayerNameById($left_player_id),
-                'player_name2' => self::getPlayerNameById($right_player_id),
-            ]);
+            $visible_hands[$player_id] = $this->deck->getCardsInLocation('hand_eye', $player_id);
+
+            self::notifyPlayer($player_id, 'takePassedCards', $notif_message, $notify_args);
         }
 
         // TODO: Add visible passed cards of all players, for spectators
@@ -605,7 +614,12 @@ class BottleImp extends Table {
 
     function stNextPlayer() {
         // Move to next player
-        if ($this->deck->countCardInLocation('cardsontable') != $this->getPlayersNumber()) {
+        $player_count = $target_card_count = $this->getPlayersNumber();
+        if ($player_count == 2) {
+            $target_card_count == 4;
+        }
+        $card_count = self::getUniqueValueFromDB('select count(*) from card where card_location like "cardsontable%"');
+        if ($card_count != $target_card_count) {
             $player_id = self::activeNextPlayer();
             self::giveExtraTime($player_id);
             $this->gamestate->nextState('nextPlayer');
@@ -614,7 +628,8 @@ class BottleImp extends Table {
 
         // Resolve the trick
         $bottle_info = $this->getBottlePriceAndOwner();
-        $cards_on_table = array_values($this->deck->getCardsInLocation('cardsontable'));
+        $cards_on_table = self::getObjectListFromDB(
+            'select card_id id, card_type type, card_type_arg type_arg, card_location location, card_location_arg location_arg from card where card_location like "cardsontable%"');
         $winning_player = null;
 
         $max_card = null;
@@ -671,22 +686,21 @@ class BottleImp extends Table {
             $win_message = clienttranslate('${player_name} wins the trick worth ${points} points');
         }
 
-        // Note: we use 2 notifications to pause the display during the first notification
-        // before cards are collected by the winner
-        self::notifyAllPlayers('trickWin', $win_message, [
+        $notify_args = [
             'player_id' => $winning_player,
             'player_name' => $players[$winning_player]['player_name'],
             'points' => $points,
             'bottle_id' => $bottle_id,
             'price' => $new_price,
-        ]);
-        self::notifyAllPlayers('giveAllCardsToPlayer','', [
-            'player_id' => $winning_player,
-            'points' => $points,
-        ]);
+        ];
 
-        // TODO: Modify for 2 players
-        $remaining_card_count = self::getUniqueValueFromDB('select count(*) from card where card_location = "hand"');
+        if ($winning_card['location_arg'][-1] == '2') {
+            $notify_args['slot'] = 2;
+        }
+
+        self::notifyAllPlayers('trickWin', $win_message, $notify_args);
+
+        $remaining_card_count = self::getUniqueValueFromDB('select count(*) from card where card_location like "hand%"');
         if ($remaining_card_count == 0) {
             // End of the hand
             $this->gamestate->nextState('endHand');
@@ -877,7 +891,7 @@ class BottleImp extends Table {
         if ($state_name == 'passCards') {
             // Pass random cards
             $cards_in_hand = $this->deck->getPlayerHand($active_player);
-            $player_count = $this->getPlayerCount();
+            $player_count = $this->getPlayersNumber();
             if ($player_count == 2) {
                 $card_count = 4;
             } else {

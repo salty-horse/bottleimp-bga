@@ -85,16 +85,17 @@ function (dojo, declare) {
             let playerPos = playerorder.indexOf(this.player_id);
 
             // Card stocks
+            this.stocksById = {};
             this.playerHand = this.initHandStock($('imp_myhand'));
             if (this.playerCount == 2) {
                 this.visibleHands = {};
                 for (let player_id of playerorder) {
                     this.visibleHands[player_id] =
-                        this.initHandStock(document.getElementById(`imp_player_${player_id}_visible_hand`));
+                        this.initHandStock(
+                            document.getElementById(`imp_player_${player_id}_visible_hand`),
+                            player_id == this.player_id);
                 }
             }
-
-            dojo.connect(this.playerHand, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
 
             this.playerCount = gamedatas.playerorder.length;
 
@@ -119,22 +120,21 @@ function (dojo, declare) {
 
             // Set dynamic UI strings
             if (this.playerCount == 2) {
+                this.opponent_id = playerorder[1 - playerPos];
+                this.opponent_name_color = this.format_block('jstpl_player_name', this.gamedatas.players[this.opponent_id]);
                 if (this.isSpectator) {
                     for (const player_info of Object.values(this.gamedatas.players)) {
                         this.setVisibleHandPlayerLabel(player_info);
                     }
                 } else {
-                    let opponent_id = playerorder[1 - playerPos];
-                    let opponent_name_color = this.format_block('jstpl_player_name', this.gamedatas.players[opponent_id]);
-                    this.setVisibleHandPlayerLabel(gamedatas.players[opponent_id]);
-                    document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
-                        _("${player_name}'s visible hand").replace('${player_name}', opponent_name_color);
-                    document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
-                        _("${player_name}'s hidden hand").replace('${player_name}', opponent_name_color);
+                    this.setVisibleHandPlayerLabel(gamedatas.players[this.opponent_id]);
                 }
+            } else {
+                document.querySelectorAll('.imp_second_card_slot').forEach(o => {o.remove()});
             }
 
             if (!this.isSpectator) {
+                this.passPlayers = {};
                 this.playersPassedCards = [];
                 let devilsTrickLabel = _("Devil's Trick")
                 document.querySelector('#imp_pass_center > .imp_playertablename').innerHTML = devilsTrickLabel;
@@ -143,6 +143,7 @@ function (dojo, declare) {
 
                 if (this.playerCount == 2) {
                     // TODO: Tooltips
+                    this.passPlayers[this.opponent_id] = ['left', 'right'];
                     this.passKeys = ['left', 'center', 'center2', 'right'];
                     document.querySelector('#imp_pass_center2 > .imp_playertablename').innerHTML = devilsTrickLabel;
                 } else {
@@ -150,9 +151,8 @@ function (dojo, declare) {
                     if (this.playerCount != 5) {
                         this.passKeys = ['left', 'center', 'right'];
                     }
-                    this.passPlayers = {};
-                    this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = 'left';
-                    this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = 'right';
+                    this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = ['left'];
+                    this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = ['right'];
 
                     for (let [player_id, pos] of Object.entries(this.passPlayers)) {
                         let player_info = gamedatas.players[player_id];
@@ -189,13 +189,14 @@ function (dojo, declare) {
                 hand_size_counter.setValue(player_info.hand_size);
 
                 if (player_info.visible_hand) {
-                    this.initHand(this.visibleHands[player_id], player_info.visible_hand);
                     document.getElementById(`imp_player_${player_id}_visible_hand_wrap`).style.display = 'block';
+                    this.initHand(this.visibleHands[player_id], player_info.visible_hand);
                 }
             }
             this.addTooltipToClass('imp_hand_size', _('Number of cards in hand'), '');
 
             if (this.gamedatas.visible_hand) {
+                document.getElementById(`imp_player_${this.player_id}_visible_hand_wrap`).style.display = 'block';
                 this.initHand(this.visibleHands[this.player_id], this.gamedatas.visible_hand);
             }
             
@@ -205,9 +206,16 @@ function (dojo, declare) {
 
             // Cards played on table
             for (let i in this.gamedatas.cardsontable) {
-                var card = this.gamedatas.cardsontable[i];
-                var player_id = card.location_arg;
+                let card = this.gamedatas.cardsontable[i];
+                let player_id = card.location_arg;
                 this.putCardOnTable(player_id, card.id);
+            }
+            if (this.gamedatas.cardsontable_2) {
+                for (let i in this.gamedatas.cardsontable_2) {
+                    let card = this.gamedatas.cardsontable[i];
+                    let player_id = card.location_arg;
+                    this.putCardOnTable(player_id, card.id);
+                }
             }
 
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -234,31 +242,39 @@ function (dojo, declare) {
                     break;
                 }
                 if (this.playerCount == 2) {
-                    document.getElementById(`imp_player_${this.opponent_id}_visible_hand_wrap`).style.display = 'none';
+                    if (this.isCurrentPlayerActive()) {
+                        document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
+                            _("${player_name}'s visible hand").replace('${player_name}', this.opponent_name_color);
+                        document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                            _("${player_name}'s hidden hand").replace('${player_name}', this.opponent_name_color);
+                    } else {
+                        document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
+                        document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                            this.opponent_name_color;
+                    }
                 }
                 document.getElementById('imp_passCards').style.display = 'flex';
-                if (this.isCurrentPlayerActive()) {
-                    if (this.playerCount == 5) {
-                        if (this.player_id == this.gamedatas.dealer) {
-                            this.passKeys = ['left', 'right'];
-                            this.showCenterPassBox(false);
-                        } else {
-                            this.passKeys = ['left', 'center', 'right'];
-                            this.showCenterPassBox(true);
-                        }
+
+                if (!this.isCurrentPlayerActive()) {
+                    this.showReceivingCardsUI();
+                    break;
+                }
+
+                if (this.playerCount == 5) {
+                    if (this.player_id == this.gamedatas.dealer) {
+                        this.passKeys = ['left', 'right'];
+                        this.showCenterPassBox(false);
                     } else {
+                        this.passKeys = ['left', 'center', 'right'];
                         this.showCenterPassBox(true);
                     }
-                    this.markActivePassBox('left');
-                    // Mark clickable cards and boxes
-                    document.querySelectorAll('#imp_myhand .stockitem, .imp_pass').forEach(
-                        e => e.classList.add('imp_clickable'));
                 } else {
-                    this.showCenterPassBox(false);
-                    for (let player_id of this.playersPassedCards) {
-                        this.showPassedCardBack(player_id);
-                    }
+                    this.showCenterPassBox(true);
                 }
+                this.markActivePassBox('left');
+                // Mark clickable cards and boxes
+                document.querySelectorAll('#imp_myhand .stockitem, .imp_pass').forEach(
+                    e => e.classList.add('imp_clickable'));
                 break;
 
             // Mark playable cards
@@ -409,13 +425,17 @@ function (dojo, declare) {
         },
 
         putCardOnTable: function(player_id, card_id) {
+            let container_id = `imp_playertablecard_${player_id}`;
+            if (document.getElementById(container_id).children.length > 0) {
+                container_id += '_2';
+            }
             let spritePos = this.getSpriteXY(card_id);
             let placedCard = dojo.place(
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
                     id: `imp_cardontable_${player_id}`,
-                } ), `imp_playertablecard_${player_id}`);
+                } ), container_id);
             placedCard.dataset.card_id = card_id;
         },
 
@@ -437,7 +457,7 @@ function (dojo, declare) {
             this.handSizes[player_id].incValue(-1);
 
             // In any case: move it to its final destination
-            this.slideToObject('imp_cardontable_' + player_id, 'imp_playertablecard_' + player_id).play();
+            this.slideToObject(`imp_cardontable_${player_id}`, `imp_playertablecard_${player_id}`).play();
         },
 
         putPassCardOnTable: function(card_id, pass_type, elem_id) {
@@ -497,23 +517,33 @@ function (dojo, declare) {
         },
 
         showCenterPassBox: function(show) {
-            document.querySelectorAll('#imp_pass_center').forEach(e => e.style.visibility = show ? 'visible' : 'hidden');
+            document.querySelectorAll('#imp_pass_center, #imp_pass_center2').forEach(e => e.style.visibility = show ? 'visible' : 'hidden');
             this.markActivePassBox();
         },
 
         showPassedCardBack: function(player_id) {
-            let pass_type = this.passPlayers[player_id];
-            if (!pass_type)
+            let pass_types = this.passPlayers[player_id];
+            if (!pass_types)
                 return;
-            let elem = dojo.place(
-                this.format_block('jstpl_cardontable', {
-                    x: 0,
-                    y: 0,
-                    id: `imp_passcardontable_${pass_type}`,
-                } ), `imp_passcard_${pass_type}`);
-            if (!this.instantaneousMode) {
-                elem.style.opacity = 0;
-                dojo.fadeIn({node: elem, duration: 500}).play();
+            for (let pass_type of pass_types) {
+                // TODO: Animate cards as coming from player panel
+                let elem = dojo.place(
+                    this.format_block('jstpl_cardontable', {
+                        x: 0,
+                        y: 0,
+                        id: `imp_passcardontable_${pass_type}`,
+                    } ), `imp_passcard_${pass_type}`);
+                if (!this.instantaneousMode) {
+                    elem.style.opacity = 0;
+                    dojo.fadeIn({node: elem, duration: 500}).play();
+                }
+            }
+        },
+
+        showReceivingCardsUI: function() {
+            this.showCenterPassBox(false);
+            for (let player_id of this.playersPassedCards) {
+                this.showPassedCardBack(player_id);
             }
         },
 
@@ -575,7 +605,7 @@ function (dojo, declare) {
             }
         },
 
-        initHandStock: function(container) {
+        initHandStock: function(container, clickable = true) {
             let stock = new ebg.stock();
             stock.setSelectionMode(1);
             stock.centerItems = false;
@@ -587,6 +617,10 @@ function (dojo, declare) {
                 stock.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
             }
 
+            if (clickable) {
+                this.stocksById[container.id] = stock;
+                dojo.connect(stock, 'onChangeSelection', this, 'onPlayerHandSelectionChanged');
+            }
             return stock;
         },
 
@@ -643,24 +677,23 @@ function (dojo, declare) {
          *
          */
 
-        onPlayerHandSelectionChanged: function() {
-            let items = this.playerHand.getSelectedItems();
+        onPlayerHandSelectionChanged: function(container_id) {
+            let stock = this.stocksById[container_id];
+            let items = stock.getSelectedItems();
             if (items.length == 0)
-                return
-            this.playerHand.unselectAll();
+                return;
+            stock.unselectAll();
 
             if (this.checkAction('playCard', true)) {
-                if (!document.getElementById(this.playerHand.getItemDivId(items[0].id)).classList.contains('imp_playable')) {
+                if (!document.getElementById(stock.getItemDivId(items[0].id)).classList.contains('imp_playable')) {
                     return;
                 }
                 let card_id = items[0].id;
                 this.ajaxAction('playCard', {
                     id: card_id,
                 });
-            } else if (this.checkAction('passCards', true)) {
+            } else if (stock == this.playerHand && this.checkAction('passCards', true)) {
                 this.playPassCard(items[0].id);
-            } else {
-                this.playerHand.unselectAll();
             }
         },
 
@@ -710,7 +743,6 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('takePassedCards');
             this.notifqueue.setSynchronous('playCard', 1000);
             this.notifqueue.setSynchronous('trickWin', 0);
-            this.notifqueue.setSynchronous('giveAllCardsToPlayer', 1000);
         },
 
         notif_newHandPublic: function(notif) {
@@ -742,10 +774,6 @@ function (dojo, declare) {
 
         notif_passCardsPrivate: async function(notif) {
             this.unmarkPlayableCards();
-            this.showCenterPassBox(false);
-            for (let player_id of this.playersPassedCards) {
-                this.showPassedCardBack(player_id);
-            }
 
             // Fade out passed cards
             for (let pos of this.passKeys) {
@@ -755,10 +783,15 @@ function (dojo, declare) {
             if (!this.instantaneousMode)
                 await new Promise(r => setTimeout(r, 500));
 
+            this.showReceivingCardsUI();
+
             this.notifqueue.setSynchronousDuration(0);
         },
 
         notif_passCards: function(notif) {
+            if (this.isSpectator)
+                return;
+            // TODO: Remove this. Inaccurate for dealer at 5 players
             if (notif.args.player_id != this.player_id)
                 this.handSizes[notif.args.player_id].incValue(this.playerCount == 2 ? -4 : -3);
             if (this.passPlayers[notif.args.player_id]) {
@@ -811,12 +844,15 @@ function (dojo, declare) {
         },
 
         notif_visibleHandsPublic: function(notif) {
+            // TODO: Tell spectators who passed what publicly with:
+            // this.showMessage(_("My message"), "only_to_log")
+
             for (let [player_id, cards] of Object.entries(notif.args.visible_hands)) {
                 if (player_id == this.player_id) {
                     continue;
                 }
-                this.initHand(this.visibleHands[player_id], cards);
                 document.getElementById(`imp_player_${player_id}_visible_hand_wrap`).style.display = 'block';
+                this.initHand(this.visibleHands[player_id], cards);
             }
         },
 
@@ -830,19 +866,22 @@ function (dojo, declare) {
         notif_trickWin: async function(notif) {
             // Move all cards on table to given table, then destroy them
             let winner_id = notif.args.player_id;
-            for (let player_id in this.gamedatas.players) {
+            let winner_div_id = `imp_cardontable_${winner_id}`;
+            if (notif.args.slot == 2) {
+                winner_div_id += '_2';
+            }
+            document.querySelectorAll('.imp_cardontable').forEach(elem => {
                 // Make sure the moved card is above the winner card
-                let animated_id = 'imp_cardontable_' + player_id;
-                if (player_id != winner_id) {
-                    document.getElementById(animated_id).style.zIndex = 3;
+                if (elem.id != winner_div_id) {
+                    elem.style.zIndex = 3;
                 }
 
-                let anim = this.slideToObject(animated_id, 'imp_cardontable_' + winner_id);
+                let anim = this.slideToObject(elem, winner_div_id);
                 dojo.connect(anim, 'onEnd', (node) => {
                     dojo.destroy(node);
                 });
                 anim.play();
-            }
+            });
             this.tricksWon[winner_id].incValue(1);
 
             // Update bottle info
