@@ -164,11 +164,7 @@ class BottleImp extends Table {
         }
 
         // Cards played on the table
-        $result['cardsontable'] = $this->deck->getCardsInLocation('cardsontable');
-
-        if (count($players) == 2) {
-            $result['cardsontable_2'] = $this->deck->getCardsInLocation('cardsontable_2');
-        }
+        $result['cardsontable'] = $this->getCardsOnTable();
 
         $result['roundNumber'] = $this->getGameStateValue('roundNumber');
         $result['totalRounds'] = count($players) * $this->getGameStateValue('roundsPerPlayer');
@@ -221,6 +217,11 @@ class BottleImp extends Table {
             'SELECT id, owner, price FROM bottles ' .
             'WHERE price = (select max(price) from bottles) ' .
             'ORDER BY id LIMIT 1');
+    }
+
+    function getCardsOnTable() {
+        return self::getObjectListFromDB(
+            'select card_id id, card_type type, card_type_arg type_arg, card_location location, card_location_arg location_arg from card where card_location like "cardsontable%"');
     }
 
     function getPlayableCards($player_id) {
@@ -616,7 +617,7 @@ class BottleImp extends Table {
         // Move to next player
         $player_count = $target_card_count = $this->getPlayersNumber();
         if ($player_count == 2) {
-            $target_card_count == 4;
+            $target_card_count = 4;
         }
         $card_count = self::getUniqueValueFromDB('select count(*) from card where card_location like "cardsontable%"');
         if ($card_count != $target_card_count) {
@@ -628,8 +629,7 @@ class BottleImp extends Table {
 
         // Resolve the trick
         $bottle_info = $this->getBottlePriceAndOwner();
-        $cards_on_table = self::getObjectListFromDB(
-            'select card_id id, card_type type, card_type_arg type_arg, card_location location, card_location_arg location_arg from card where card_location like "cardsontable%"');
+        $cards_on_table = $this->getCardsOnTable();
         $winning_player = null;
 
         $max_card = null;
@@ -662,7 +662,7 @@ class BottleImp extends Table {
         $this->gamestate->changeActivePlayer($winning_player);
 
         // Move all cards to the winner's score pile
-        $this->deck->moveAllCardsInLocation('cardsontable', 'scorepile', null, $winning_player);
+        self::DbQuery("UPDATE card SET card_location='scorepile', card_location_arg='$winning_player' WHERE card_location like 'cardsontable%'");
 
         // Update bottle
         $new_price = 0;

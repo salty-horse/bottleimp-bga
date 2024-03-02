@@ -137,6 +137,14 @@
     width: 180px;
 }
 
+#imp_pass_center.imp_hidden {
+	visibility: hidden;
+}
+
+#imp_pass_center2.imp_hidden {
+	display: none;
+}
+
 .imp_table_selected {
     outline: 2px dashed black;
     outline-offset: -2px;

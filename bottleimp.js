@@ -87,13 +87,15 @@ function (dojo, declare) {
             // Card stocks
             this.stocksById = {};
             this.playerHand = this.initHandStock($('imp_myhand'));
+            this.handStocks = [this.playerHand];
             if (this.playerCount == 2) {
                 this.visibleHands = {};
                 for (let player_id of playerorder) {
-                    this.visibleHands[player_id] =
-                        this.initHandStock(
-                            document.getElementById(`imp_player_${player_id}_visible_hand`),
-                            player_id == this.player_id);
+                    let stock = this.initHandStock(
+                        document.getElementById(`imp_player_${player_id}_visible_hand`),
+                        player_id == this.player_id);
+                    this.visibleHands[player_id] = stock;
+                    this.handStocks.push(stock);
                 }
             }
 
@@ -205,17 +207,9 @@ function (dojo, declare) {
             }
 
             // Cards played on table
-            for (let i in this.gamedatas.cardsontable) {
-                let card = this.gamedatas.cardsontable[i];
+            for (let card of this.gamedatas.cardsontable) {
                 let player_id = card.location_arg;
-                this.putCardOnTable(player_id, card.id);
-            }
-            if (this.gamedatas.cardsontable_2) {
-                for (let i in this.gamedatas.cardsontable_2) {
-                    let card = this.gamedatas.cardsontable[i];
-                    let player_id = card.location_arg;
-                    this.putCardOnTable(player_id, card.id);
-                }
+                this.putCardOnTable(player_id, card.id, card.location.slice(-1) == '2' ? 2 : 1);
             }
 
             // Setup game notifications to handle (see "setupNotifications" method below)
@@ -287,9 +281,8 @@ function (dojo, declare) {
                 // Highlight playable cards
                 for (let card_id of args.args._private.playable_cards) {
                     let elem = document.getElementById(`imp_myhand_item_${card_id}`);
-                    // Look for strawman
                     if (!elem) {
-                        elem = document.querySelector(`#imp_mystrawmen div[data-card_id="${card_id}"]`)
+                        elem = document.getElementById(`imp_player_${this.player_id}_visible_hand_item_${card_id}`)
                     }
                     if (elem) {
                         elem.classList.add('imp_playable');
@@ -380,6 +373,12 @@ function (dojo, declare) {
         },
 
         animateFrom: function(elem, oldPos, duration = 500) {
+            if (oldPos instanceof HTMLElement) {
+                oldPos = oldPos.getBoundingClientRect();
+            } else if (typeof(oldPos) === 'string' || oldPos instanceof String) {
+                oldPos = document.getElementById(oldPos).getBoundingClientRect();
+            }
+
             if (this.instantaneousMode || !elem.animate) {
                 return;
             }
@@ -424,40 +423,54 @@ function (dojo, declare) {
             this.updateStockOverlap(stock);
         },
 
-        putCardOnTable: function(player_id, card_id) {
+        putCardOnTable: function(player_id, card_id, slot) {
             let container_id = `imp_playertablecard_${player_id}`;
-            if (document.getElementById(container_id).children.length > 0) {
-                container_id += '_2';
+            let suffix = '';
+            if (slot) {
+                if (slot == 2) {
+                    suffix = '_2';
+                }
+            } else if (document.getElementById(container_id).children.length > 0) {
+                suffix = '_2';
             }
             let spritePos = this.getSpriteXY(card_id);
             let placedCard = dojo.place(
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
-                    id: `imp_cardontable_${player_id}`,
-                } ), container_id);
+                    id: `imp_cardontable_${player_id}${suffix}`,
+                } ), `${container_id}${suffix}`);
             placedCard.dataset.card_id = card_id;
+
+            return placedCard;
         },
 
         playCardOnTable: function(player_id, card_id) {
-            this.putCardOnTable(player_id, card_id);
+            let newCard = this.putCardOnTable(player_id, card_id);
 
-            if (player_id != this.player_id) {
-                // Some opponent played a card
-                // Move card from player panel
-                this.placeOnObject('imp_cardontable_' + player_id, 'overall_player_board_' + player_id);
-            } else {
-                // You played a card. If it exists in your hand, move card from there and remove
-                // corresponding item
-                if ($('imp_myhand_item_' + card_id)) {
-                    this.placeOnObject('imp_cardontable_' + player_id, 'imp_myhand_item_' + card_id);
-                    this.playerHand.removeFromStockById(card_id);
+            // Check if the card is in a visible hand
+            let fromStock = null;
+            let handElem;
+
+            for (let stock of this.handStocks) {
+                handElem = document.getElementById(stock.getItemDivId(card_id));
+                if (handElem) {
+                    fromStock = stock;
+                    break;
                 }
             }
-            this.handSizes[player_id].incValue(-1);
 
-            // In any case: move it to its final destination
-            this.slideToObject(`imp_cardontable_${player_id}`, `imp_playertablecard_${player_id}`).play();
+            if (fromStock) {
+                // Move card from stock
+                this.animateFrom(newCard, handElem);
+                fromStock.removeFromStockById(card_id);
+            } else {
+                // Move card from player panel
+                this.animateFrom(newCard, `overall_player_board_${player_id}`);
+            }
+
+            // TODO: Remove this - only keep track of hidden hand size
+            this.handSizes[player_id].incValue(-1);
         },
 
         putPassCardOnTable: function(card_id, pass_type, elem_id) {
@@ -517,7 +530,13 @@ function (dojo, declare) {
         },
 
         showCenterPassBox: function(show) {
-            document.querySelectorAll('#imp_pass_center, #imp_pass_center2').forEach(e => e.style.visibility = show ? 'visible' : 'hidden');
+            document.querySelectorAll('#imp_pass_center, #imp_pass_center2').forEach(e => {
+                if (show) {
+                    e.classList.remove('imp_hidden');
+                } else {
+                    e.classList.add('imp_hidden');
+                }
+            });
             this.markActivePassBox();
         },
 
@@ -568,7 +587,7 @@ function (dojo, declare) {
         },
 
         unmarkPlayableCards: function() {
-            document.querySelectorAll('#imp_myhand .imp_playable, #imp_myhand .imp_clickable, .imp_pass').forEach(
+            document.querySelectorAll('.imp_playable, .imp_clickable').forEach(
                 e => e.classList.remove('imp_playable', 'imp_clickable'));
         },
 
@@ -806,6 +825,7 @@ function (dojo, declare) {
         },
 
         notif_takePassedCards: async function(notif) {
+            // FIXME: Bug when soemtimes the face down cards are not there
             for (let pos of ['left', 'right']) {
                 let card_id = notif.args[`card_id_${pos}`];
                 this.fadeOutAndDestroy(`imp_passcardontable_${pos}`);
