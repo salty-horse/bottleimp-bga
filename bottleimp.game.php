@@ -259,14 +259,20 @@ class BottleImp extends Table {
     // A card can be autoplayed if it's the only one left, or if the hand is empty
     // and there's only one legal strawman
     function getAutoplayCard($player_id) {
-        // TODO: Modify for 2 players
-        $cards_in_hand = $this->deck->getPlayerHand($player_id);
-        if (count($cards_in_hand) == 1) {
-            return array_values($cards_in_hand)[0]['id'];
-        } else if (!$cards_in_hand) {
-            $playable_cards = $this->getPlayableCards($player_id);
-            if (count($playable_cards) == 1) {
-                return array_values($playable_cards)[0]['id'];
+        $cards_in_hand = self::getObjectListFromDB("SELECT card_id FROM card where card_location_arg='$player_id' and card_location='hand'", true);
+        if ($this->getPlayersNumber() == 2) {
+            $cards_in_visible_hand = self::getObjectListFromDB("SELECT card_id FROM card where card_location_arg='$player_id' and card_location='hand_eye'", true);
+            if (count($cards_in_hand) == 1 && count($cards_in_visible_hand) == 0) {
+                return $cards_in_hand[0];
+            } else if (count($cards_in_hand) == 0) {
+                $playable_cards = $this->getPlayableCards($player_id);
+                if (count($playable_cards) == 1) {
+                    return array_values($playable_cards)[0]['id'];
+                }
+            }
+        } else {
+            if (count($cards_in_hand) == 1) {
+                return $cards_in_hand[0];
             }
         }
 
@@ -805,7 +811,7 @@ class BottleImp extends Table {
 
         // Update scores in DB
         foreach ($score_object as $player_id => $points) {
-            self::DbQuery("UPDATE player SET player_score=player_score+$points  WHERE player_id='$player_id'");
+            self::DbQuery("UPDATE player SET player_score=player_score+$points WHERE player_id='$player_id'");
         }
 
         $new_scores = self::getCollectionFromDb('SELECT player_id, player_score FROM player', true);

@@ -144,10 +144,12 @@ function (dojo, declare) {
                 // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
 
                 if (this.playerCount == 2) {
-                    // TODO: Tooltips
                     this.passPlayers[this.opponent_id] = ['left', 'right'];
                     this.passKeys = ['left', 'center', 'center2', 'right'];
                     document.querySelector('#imp_pass_center2 > .imp_playertablename').innerHTML = devilsTrickLabel;
+                    if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(this.opponent_id.toString()) == -1) {
+                        this.playersPassedCards.push(this.opponent_id);
+                    }
                 } else {
                     // For 5 players, this is set inside onEnteringState
                     if (this.playerCount != 5) {
@@ -162,7 +164,7 @@ function (dojo, declare) {
                             "${player_name}",
                             {player_name: this.format_block('jstpl_player_name', player_info)});
 
-                        if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id) == -1) {
+                        if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id.toString()) == -1) {
                             this.playersPassedCards.push(player_id);
                         }
                     }
@@ -231,11 +233,12 @@ function (dojo, declare) {
             switch (stateName) {
             case 'passCards':
                 document.querySelectorAll('.imp_playertable').forEach(e => e.style.display = 'none');
+                document.querySelectorAll('.imp_visible_hand').forEach(e => e.style.display = 'none');
                 if (this.isSpectator) {
-                    document.querySelectorAll('.imp_visible_hand').forEach(e => e.style.display = 'none');
                     break;
                 }
                 if (this.playerCount == 2) {
+                    document.getElementById(`imp_player_${this.player_id}_visible_hand_wrap`).style.display = 'block';
                     if (this.isCurrentPlayerActive()) {
                         document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
                             _("${player_name}'s visible hand").replace('${player_name}', this.opponent_name_color);
@@ -561,6 +564,11 @@ function (dojo, declare) {
 
         showReceivingCardsUI: function() {
             this.showCenterPassBox(false);
+            if (this.playerCount == 2) {
+                document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
+                document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                    this.opponent_name_color;
+            }
             for (let player_id of this.playersPassedCards) {
                 this.showPassedCardBack(player_id);
             }
@@ -761,7 +769,7 @@ function (dojo, declare) {
             this.notifqueue.setSynchronous('passCards');
             this.notifqueue.setSynchronous('takePassedCards');
             this.notifqueue.setSynchronous('playCard', 1000);
-            this.notifqueue.setSynchronous('trickWin', 0);
+            this.notifqueue.setSynchronous('trickWin');
         },
 
         notif_newHandPublic: function(notif) {
@@ -789,6 +797,9 @@ function (dojo, declare) {
 
         notif_newHand: function(notif) {
             this.initHand(this.playerHand, notif.args.hand_cards);
+            if (notif.args.visible_hand) {
+                this.initHand(this.visibleHands[this.player_id], notif.args.visible_hand);
+            }
         },
 
         notif_passCardsPrivate: async function(notif) {
@@ -825,7 +836,6 @@ function (dojo, declare) {
         },
 
         notif_takePassedCards: async function(notif) {
-            // FIXME: Bug when soemtimes the face down cards are not there
             for (let pos of ['left', 'right']) {
                 let card_id = notif.args[`card_id_${pos}`];
                 this.fadeOutAndDestroy(`imp_passcardontable_${pos}`);
