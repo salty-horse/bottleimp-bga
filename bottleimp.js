@@ -396,7 +396,7 @@ function (dojo, declare) {
                 {transform: `translate(${translateX}px, ${translateY}px)`},
                 {transform: 'none'}
 
-            ], {duration: duration}).play();
+            ], {easing: 'ease-out', duration: duration}).play();
         },
 
         prepareDivSlide: function(elem) {
