@@ -185,12 +185,14 @@ function (dojo, declare) {
                 tricks_won_counter.setValue(player_info.tricks_won);
 
                 // Hand size counter
-                dojo.place(this.format_block('jstpl_player_hand_size', player_info),
-                    document.getElementById(`player_board_${player_id}`));
-                let hand_size_counter = new ebg.counter();
-                this.handSizes[player_id] = hand_size_counter;
-                hand_size_counter.create(`imp_player_hand_size_${player_id}`);
-                hand_size_counter.setValue(player_info.hand_size);
+                if (this.playerCount == 2) {
+                    dojo.place(this.format_block('jstpl_player_hand_size', player_info),
+                        document.getElementById(`player_board_${player_id}`));
+                    let hand_size_counter = new ebg.counter();
+                    this.handSizes[player_id] = hand_size_counter;
+                    hand_size_counter.create(`imp_player_hand_size_${player_id}`);
+                    hand_size_counter.setValue(player_info.hand_size);
+                }
 
                 if (player_info.visible_hand) {
                     document.getElementById(`imp_player_${player_id}_visible_hand_wrap`).style.display = 'block';
@@ -463,17 +465,21 @@ function (dojo, declare) {
                 }
             }
 
+            let fromHand = false;
             if (fromStock) {
                 // Move card from stock
                 this.animateFrom(newCard, handElem);
                 fromStock.removeFromStockById(card_id);
+                fromHand = (fromStock == this.playerHand[this.player_id]);
             } else {
                 // Move card from player panel
                 this.animateFrom(newCard, `overall_player_board_${player_id}`);
+                fromHand = true;
             }
 
-            // TODO: Remove this - only keep track of hidden hand size
-            this.handSizes[player_id].incValue(-1);
+            if (this.playerCount == 2 && fromHand) {
+                this.handSizes[player_id].incValue(-1);
+            }
         },
 
         putPassCardOnTable: function(card_id, pass_type, elem_id) {
@@ -821,9 +827,8 @@ function (dojo, declare) {
         notif_passCards: function(notif) {
             if (this.isSpectator)
                 return;
-            // TODO: Remove this. Inaccurate for dealer at 5 players
-            if (notif.args.player_id != this.player_id)
-                this.handSizes[notif.args.player_id].incValue(this.playerCount == 2 ? -4 : -3);
+            if (this.playerCount == 2 && notif.args.player_id != this.player_id)
+                this.handSizes[notif.args.player_id].incValue(-4);
             if (this.passPlayers[notif.args.player_id]) {
                 if (this.isCurrentPlayerActive()) {
                     // Remember this player passed and animate later

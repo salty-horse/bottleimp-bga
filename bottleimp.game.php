@@ -177,7 +177,7 @@ class BottleImp extends Table {
         foreach ($players as &$player) {
             $player_id = $player['id'];
             $player['tricks_won'] = $score_piles[$player_id]['tricks_won'];
-            $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);
+            $player['hand_size'] = $this->deck->countCardInLocation('hand', $player_id);  // Only used in 2-player game
             if (count($players) == 2 && $state_name != 'passCards') {
                 $player['visible_hand'] = $this->deck->getCardsInLocation('hand_eye', $player_id);
             }
@@ -551,7 +551,7 @@ class BottleImp extends Table {
         $teams = $this->assignTeams();
 
         self::notifyAllPlayers('newHandPublic', '', [
-            'hand_size' => $hand_size,  // 5-player exception handled in JS
+            'hand_size' => $hand_size,  // Only used in 2-player game
             'round_number' => $round_number,
             'dealer' => $dealer,
             'teams' => $teams,
