@@ -144,8 +144,8 @@ function (dojo, declare) {
                 // this.addTooltip('imp_pass_center', _("Card to place in the Devil's trick"), '');
 
                 if (this.playerCount == 2) {
-                    this.passPlayers[this.opponent_id] = ['left', 'right'];
-                    this.passKeys = ['left', 'center', 'center2', 'right'];
+                    this.passPlayers[this.opponent_id] = ['next', 'prev'];
+                    this.passKeys = ['next', 'center', 'center2', 'prev'];
                     document.querySelector('#imp_pass_center2 > .imp_playertablename').innerHTML = devilsTrickLabel;
                     if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(this.opponent_id.toString()) == -1) {
                         this.playersPassedCards.push(this.opponent_id);
@@ -153,10 +153,10 @@ function (dojo, declare) {
                 } else {
                     // For 5 players, this is set inside onEnteringState
                     if (this.playerCount != 5) {
-                        this.passKeys = ['left', 'center', 'right'];
+                        this.passKeys = ['next', 'center', 'prev'];
                     }
-                    this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = ['left'];
-                    this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = ['right'];
+                    this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = ['next'];
+                    this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = ['prev'];
 
                     for (let [player_id, pos] of Object.entries(this.passPlayers)) {
                         let player_info = gamedatas.players[player_id];
@@ -242,13 +242,13 @@ function (dojo, declare) {
                 if (this.playerCount == 2) {
                     document.getElementById(`imp_player_${this.player_id}_visible_hand_wrap`).style.display = 'block';
                     if (this.isCurrentPlayerActive()) {
-                        document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
+                        document.querySelector('#imp_pass_next > .imp_playertablename').innerHTML =
                             _("${player_name}'s visible hand").replace('${player_name}', this.opponent_name_color);
-                        document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                        document.querySelector('#imp_pass_prev > .imp_playertablename').innerHTML =
                             _("${player_name}'s hidden hand").replace('${player_name}', this.opponent_name_color);
                     } else {
-                        document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
-                        document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                        document.querySelector('#imp_pass_next > .imp_playertablename').innerHTML =
+                        document.querySelector('#imp_pass_prev > .imp_playertablename').innerHTML =
                             this.opponent_name_color;
                     }
                 }
@@ -261,16 +261,16 @@ function (dojo, declare) {
 
                 if (this.playerCount == 5) {
                     if (this.player_id == this.gamedatas.dealer) {
-                        this.passKeys = ['left', 'right'];
+                        this.passKeys = ['next', 'prev'];
                         this.showCenterPassBox(false);
                     } else {
-                        this.passKeys = ['left', 'center', 'right'];
+                        this.passKeys = ['next', 'center', 'prev'];
                         this.showCenterPassBox(true);
                     }
                 } else {
                     this.showCenterPassBox(true);
                 }
-                this.markActivePassBox('left');
+                this.markActivePassBox('next');
                 // Mark clickable cards and boxes
                 document.querySelectorAll('#imp_myhand .stockitem, .imp_pass').forEach(
                     e => e.classList.add('imp_clickable'));
@@ -571,8 +571,8 @@ function (dojo, declare) {
         showReceivingCardsUI: function() {
             this.showCenterPassBox(false);
             if (this.playerCount == 2) {
-                document.querySelector('#imp_pass_left > .imp_playertablename').innerHTML =
-                document.querySelector('#imp_pass_right > .imp_playertablename').innerHTML =
+                document.querySelector('#imp_pass_next > .imp_playertablename').innerHTML =
+                document.querySelector('#imp_pass_prev > .imp_playertablename').innerHTML =
                     this.opponent_name_color;
             }
             for (let player_id of this.playersPassedCards) {
@@ -841,7 +841,7 @@ function (dojo, declare) {
         },
 
         notif_takePassedCards: async function(notif) {
-            for (let pos of ['left', 'right']) {
+            for (let pos of ['next', 'prev']) {
                 let card_id = notif.args[`card_id_${pos}`];
                 this.fadeOutAndDestroy(`imp_passcardontable_${pos}`);
                 let reveal_id = `imp_passcardreveal_${pos}`;
@@ -854,12 +854,12 @@ function (dojo, declare) {
             if (!this.instantaneousMode)
                 await new Promise(r => setTimeout(r, 2000));
 
-            for (let pos of ['left', 'right']) {
+            for (let pos of ['next', 'prev']) {
                 let card_id = notif.args[`card_id_${pos}`];
                 let reveal_id = `imp_passcardreveal_${pos}`;
                 dojo.destroy(reveal_id);
                 let stock = this.playerHand;
-                if (this.playerCount == 2 && pos == 'left') {
+                if (this.playerCount == 2 && pos == 'next') {
                     stock = this.visibleHands[this.player_id];
                 }
                 stock.addToStockWithId(this.gamedatas.cards_by_id[card_id], card_id, `imp_passcard_${pos}`);

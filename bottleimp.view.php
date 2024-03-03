@@ -62,9 +62,9 @@ class view_bottleimp_bottleimp extends game_view {
         }
 
         if (count($players) == 2) {
-            $pass_types = ['left', 'center', 'center2', 'right'];
+            $pass_types = ['next', 'center', 'center2', 'prev'];
         } else {
-            $pass_types = ['left', 'center', 'right'];
+            $pass_types = ['next', 'center', 'prev'];
         }
 
         $this->page->begin_block($template, 'pass');
