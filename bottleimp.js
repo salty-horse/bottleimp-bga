@@ -318,7 +318,11 @@ function (dojo, declare) {
                 case 'passCards':
                     // TODO: this.addActionButton('resetPassCards_button', _('Reset choices'), 'onResetPassCards', null, false, 'gray');
                     this.addActionButton('passCards_button', _('Pass selected cards'), 'onPassCards');
-                    dojo.addClass('passCards_button', 'disabled');
+
+                    // In case this was called after a player passes while the current player has just selected the cards to pass
+                    if (Object.keys(this.passCards).length != this.passKeys.length) {
+                        dojo.addClass('passCards_button', 'disabled');
+                    }
                     break;
                 }
             }
