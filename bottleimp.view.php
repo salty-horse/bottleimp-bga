@@ -32,31 +32,32 @@ class view_bottleimp_bottleimp extends game_view {
     function build_page($viewArgs) {
         // Get players & players number
         $players = $this->game->loadPlayersBasicInfos();
-        /**
-         * ********* Place your code below: ***********
-         */
+        $player_order = $this->game->getPlayerOrderFromCurrent();
         $template = self::getGameName() . '_' . self::getGameName();
 
-        global $g_user;
-        if ($this->game->isSpectator()) {
-            $player_ids = array_keys($players);
-            $current_player_id = $player_ids[0];
-            $this->tpl['TOP_PLAYER_ID'] = $player_ids[0];
-            $this->tpl['BOTTOM_PLAYER_ID'] = $player_ids[1];
-        } else {
-            $current_player_id = $g_user->get_id();
-            $this->tpl['BOTTOM_PLAYER_ID'] = $current_player_id;
+        if (count($players) == 2) {
+            global $g_user;
+            if ($this->game->isSpectator()) {
+                $player_ids = array_keys($players);
+                $current_player_id = $player_ids[0];
+                $this->tpl['TOP_PLAYER_ID'] = $player_ids[0];
+                $this->tpl['BOTTOM_PLAYER_ID'] = $player_ids[1];
+            } else {
+                $current_player_id = $g_user->get_id();
+                $this->tpl['BOTTOM_PLAYER_ID'] = $current_player_id;
+            }
         }
-        
+
         $this->page->begin_block($template, 'player');
-        foreach ($players as $player_id => $info) {
+        foreach ($player_order as $player_id) {
+            $info = $players[$player_id];
             $this->page->insert_block('player', [
                 'PLAYER_ID' => $player_id,
                 'PLAYER_NAME' => $players[$player_id]['player_name'],
                 'PLAYER_COLOR' => $players[$player_id]['player_color'],
             ]);
 
-            if (!$this->game->isSpectator() && $player_id != $current_player_id) {
+            if (count($players) == 2 && !$this->game->isSpectator() && $player_id != $current_player_id) {
                 $this->tpl['TOP_PLAYER_ID'] = $player_id;
             }
         }

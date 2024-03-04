@@ -212,6 +212,25 @@ class BottleImp extends Table {
     //////////// Utilities
     ////////////
 
+
+    function getPlayerOrderFromCurrent() {
+        $player_order = self::getObjectListFromDB("SELECT player_id FROM player ORDER BY player_no", true);
+        if (self::isSpectator()) {
+            return $player_order;
+        }
+        $player_id = self::getCurrentPlayerId();
+        $i = 0;
+        while ($player_order[0] != $player_id) {
+            $i += 1;
+            if ($i > count($player_order)) {
+                throw new BgaVisibleSystemException('Error creating player list');
+            }
+            $popped = array_shift($player_order);
+            $player_order[] = $popped;
+        }
+        return $player_order;
+    }
+
     function getBottlePriceAndOwner() {
         return self::getObjectFromDb(
             'SELECT id, owner, price FROM bottles ' .
@@ -571,6 +590,7 @@ class BottleImp extends Table {
         $players = self::loadPlayersBasicInfos();
 
         $visible_hands = [];
+        $player_count = $this->getPlayersNumber();
 
         foreach ($players as $player_id => $player) {
             $next_player_id = self::getPlayerAfter($player_id);
@@ -600,15 +620,19 @@ class BottleImp extends Table {
             $notify_args['card_next'] = array_values($card_from_next)[0]['type_arg']/10;
             $notify_args['card_prev'] = array_values($card_from_prev)[0]['type_arg']/10;
 
-            $visible_hands[$player_id] = $this->deck->getCardsInLocation('hand_eye', $player_id);
+            if ($player_count == 2) {
+                $visible_hands[$player_id] = $this->deck->getCardsInLocation('hand_eye', $player_id);
+            }
 
             self::notifyPlayer($player_id, 'takePassedCards', $notif_message, $notify_args);
         }
 
-        // TODO: Add visible passed cards of all players, for spectators
-        self::notifyAllPlayers('visibleHandsPublic', '', [
-            'visible_hands' => $visible_hands,
-        ]);
+        if ($player_count == 2) {
+            // TODO: Add visible passed cards of all players, for spectators
+            self::notifyAllPlayers('visibleHandsPublic', '', [
+                'visible_hands' => $visible_hands,
+            ]);
+        }
 
         $this->gamestate->changeActivePlayer($this->getGameStateValue('firstPlayer'));
         $this->gamestate->nextState();
