@@ -15,7 +15,7 @@
  * _ when a player refreshes the game page (F5)
  *
  * 'build_page' method allows you to dynamically modify the HTML generated for the game interface. In
- * particular, you can set here the values of variables elements defined in bottleimp_bottleimp.tpl (elements
+ * particular, you can set here the values of variables elements defined in bottleimpnew_bottleimpnew.tpl (elements
  * like {MY_VARIABLE_ELEMENT}), and insert HTML block elements (also defined in your HTML template file)
  *
  * Note: if the HTML of your game interface is always the same, you don't have to place anything here.
@@ -24,9 +24,9 @@
 
 require_once(APP_BASE_PATH.'view/common/game.view.php');
 
-class view_bottleimp_bottleimp extends game_view {
+class view_bottleimpnew_bottleimpnew extends game_view {
     function getGameName() {
-        return 'bottleimp';
+        return 'bottleimpnew';
     }
 
     function build_page($viewArgs) {
@@ -75,8 +75,8 @@ class view_bottleimp_bottleimp extends game_view {
             ]);
         }
 
-        $this->tpl['YOUR_HAND'] = self::_('Your hand');
-        $this->tpl['YOUR_VISIBLE_HAND'] = self::_('Your visible hand');
+        $this->tpl['MY_HAND'] = self::_('My hand');
+        $this->tpl['MY_VISIBLE_HAND'] = self::_('My visible hand');
         $this->tpl['TRUMP_RANK'] = self::_('Trump rank');
         $this->tpl['TRUMP_SUIT'] = self::_('Trump suit');
         $this->tpl['TRICKS_WON'] = self::_('Tricks won');

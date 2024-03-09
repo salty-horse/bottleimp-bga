@@ -18,7 +18,7 @@
 require_once(APP_GAMEMODULE_PATH.'module/table/table.game.php');
 
 
-class BottleImp extends Table {
+class BottleImpNew extends Table {
 
     function __construct() {
 
@@ -50,7 +50,7 @@ class BottleImp extends Table {
     protected function getGameName()
     {
         // Used for translations and stuff. Please do not modify.
-        return 'bottleimp';
+        return 'bottleimpnew';
     }
 
     /*
