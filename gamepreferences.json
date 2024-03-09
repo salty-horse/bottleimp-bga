@@ -1,0 +1,18 @@
+{
+  "100": {
+    "name": "Card Style",
+    "needReload": true,
+    "values": {
+      "1": {
+        "name": "Original"
+      },
+      "2": {
+        "name": "Large Print"
+      },
+      "3": {
+        "name": "Square, Colorblind-friendly"
+      }
+    },
+    "default": 1
+  }
+}
