@@ -9,7 +9,7 @@
 -- See http://en.boardgamearena.com/#!doc/Studio for more information.
 -------
 
-    bottleimpnew_bottleimpnew.tpl
+    bottleimp_bottleimp.tpl
 
     This is the HTML template of your game.
 
@@ -57,13 +57,13 @@
 
 <div id="imp_my_hands">
 <div id="imp_myhand_wrap" class="whiteblock">
-    <h3>{MY_HAND}</h3>
+    <h3>{YOUR_HAND}</h3>
     <div id="imp_myhand">
     </div>
 </div>
 
 <div id="imp_player_{BOTTOM_PLAYER_ID}_visible_hand_wrap" class="imp_visible_hand whiteblock">
-    <h3>{MY_VISIBLE_HAND}</h3>
+    <h3>{YOUR_VISIBLE_HAND}</h3>
     <div id="imp_player_{BOTTOM_PLAYER_ID}_visible_hand">
     </div>
 </div>

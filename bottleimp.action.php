@@ -15,12 +15,12 @@
  * user interface logic (javascript).
  *
  * If you define a method 'myAction' here, then you can call it from your javascript code with:
- * this.ajaxcall('/bottleimpnew/bottleimpnew/myAction.html', ...)
+ * this.ajaxcall('/bottleimp/bottleimp/myAction.html', ...)
  *
  */
 
 
-class action_bottleimpnew extends APP_GameAction {
+class action_bottleimp extends APP_GameAction {
 
     // Constructor: please do not modify
     public function __default() {
@@ -28,7 +28,7 @@ class action_bottleimpnew extends APP_GameAction {
             $this->view = "common_notifwindow";
             $this->viewArgs ['table'] = self::getArg("table", AT_posint, true);
         } else {
-            $this->view = "bottleimpnew_bottleimpnew";
+            $this->view = "bottleimp_bottleimp";
             self::trace("Complete reinitialization of board game");
         }
     }

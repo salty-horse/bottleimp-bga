@@ -28,7 +28,7 @@ define([
     'ebg/stock'
 ],
 function (dojo, declare) {
-    return declare('bgagame.bottleimpnew', ebg.core.gamegui, {
+    return declare('bgagame.bottleimp', ebg.core.gamegui, {
         constructor: function(){
             this.cardWidth = 143;
             this.cardHeight = 200;
@@ -352,7 +352,7 @@ function (dojo, declare) {
                 func = () => {};
             }
 
-            this.ajaxcall(`/bottleimpnew/bottleimpnew/${action}.html`, args, this, func, err);
+            this.ajaxcall(`/bottleimp/bottleimp/${action}.html`, args, this, func, err);
         },
 
         /** Override this function to inject html for log items  */
@@ -650,15 +650,8 @@ function (dojo, declare) {
             stock.create(this, container, this.cardWidth, this.cardHeight);
             stock.image_items_per_row = 11;
 
-            let cards_url;
-             if (this.prefs[100].value == 1) {
-                 cards_url = 'img/cards.jpg';
-             } else if (this.prefs[100].value == 2) {
-                 cards_url = 'img/cards_large_print.jpg';
-             }
-
             for (let card of Object.values(this.gamedatas.cards)) {
-                stock.addItemType(card.rank, card.rank, g_gamethemeurl + cards_url, this.rankToSpritesheet[card.rank]);
+                stock.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
             }
 
             if (clickable) {
