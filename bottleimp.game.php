@@ -759,7 +759,7 @@ class BottleImp extends Table {
         $devil_cards_display = [];
         foreach ($center_cards as $card) {
             $card['type_arg'] /= 10;
-            $devil_points = $this->cards[$card['type_arg']]['points'];
+            $devil_points += $this->cards[$card['type_arg']]['points'];
             $suit_display = $this->getSuitLogName($card);
             $devil_cards_display[] = "{$card['type_arg']}$suit_display";
         }
