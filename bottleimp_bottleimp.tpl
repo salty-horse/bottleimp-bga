@@ -81,7 +81,7 @@ var jstpl_cardontable = '<div class="imp_cardontable" id="${id}" style="backgrou
 
 var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle"><span>${price}</span></div>';
 
-var jstpl_player_name = '<span style="color:#${color}">${name}</span>'
+var jstpl_player_name = '<span style="color:#${color}">${name}</span>';
 
 </script>
 
