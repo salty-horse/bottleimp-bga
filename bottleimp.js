@@ -123,7 +123,7 @@ function (dojo, declare) {
             // Set dynamic UI strings
             if (this.playerCount == 2) {
                 this.opponent_id = playerorder[1 - playerPos];
-                this.opponent_name_color = this.format_block('jstpl_player_name', this.gamedatas.players[this.opponent_id]);
+                this.opponent_name_color = this.format_player_name(this.gamedatas.players[this.opponent_id]);
                 if (this.isSpectator) {
                     for (const player_info of Object.values(this.gamedatas.players)) {
                         this.setVisibleHandPlayerLabel(player_info);
@@ -162,7 +162,7 @@ function (dojo, declare) {
                         let player_info = gamedatas.players[player_id];
                         document.querySelector(`#imp_pass_${pos} > .imp_playertablename`).innerHTML = dojo.string.substitute(
                             "${player_name}",
-                            {player_name: this.format_block('jstpl_player_name', player_info)});
+                            {player_name: this.format_player_name(player_info)});
 
                         if (gamedatas.gamestate.name == 'passCards' && gamedatas.players_yet_to_pass_cards.indexOf(player_id.toString()) == -1) {
                             this.playersPassedCards.push(player_id);
@@ -375,6 +375,10 @@ function (dojo, declare) {
             return this.inherited(this.format_string_recursive, arguments);
         },
 
+        format_player_name: function(player_info) {
+            return this.format_block(player_info.color_back ? 'jstpl_player_name_color_back' : 'jstpl_player_name', player_info)
+        },
+
         getSuitDiv: function (suit_symbol) {
             let suit_id = this.suitSymbolToId[suit_symbol];
             let suit_name = this.suitNames[suit_id];
@@ -448,7 +452,7 @@ function (dojo, declare) {
                     x: spritePos.x,
                     y: spritePos.y,
                     id: `imp_cardontable_${player_id}${suffix}`,
-                } ), `${container_id}${suffix}`);
+                }), `${container_id}${suffix}`);
             placedCard.dataset.card_id = card_id;
 
             return placedCard;
@@ -493,7 +497,7 @@ function (dojo, declare) {
                     x: spritePos.x,
                     y: spritePos.y,
                     id: elem_id ?? `imp_passcardontable_${card_id}`,
-                } ), `imp_passcard_${pass_type}`);
+                }), `imp_passcard_${pass_type}`);
             placedCard.style.zIndex = 100;
             placedCard.dataset.card_id = card_id;
             return placedCard;
@@ -564,7 +568,7 @@ function (dojo, declare) {
                         x: 0,
                         y: 0,
                         id: `imp_passcardontable_${pass_type}`,
-                    } ), `imp_passcard_${pass_type}`);
+                    }), `imp_passcard_${pass_type}`);
                 if (!this.instantaneousMode) {
                     elem.style.opacity = 0;
                     dojo.fadeIn({node: elem, duration: 500}).play();
@@ -672,7 +676,7 @@ function (dojo, declare) {
                     this.format_block('jstpl_bottle', {
                         id: bottle.id,
                         price: bottle.price,
-                    } ), bottle.owner ? `imp_bottle_slot_${bottle.owner}` : 'imp_bottles');
+                    }), bottle.owner ? `imp_bottle_slot_${bottle.owner}` : 'imp_bottles');
             }
             document.getElementById('imp_max_bottle_price').textContent = maxPrice;
         },
@@ -700,7 +704,7 @@ function (dojo, declare) {
 
         setVisibleHandPlayerLabel: function(player_info) {
             document.querySelector(`#imp_player_${player_info.id}_visible_hand_wrap > h3`).innerHTML =
-                _("${player_name}'s visible hand").replace('${player_name}', this.format_block('jstpl_player_name', player_info));
+                _("${player_name}'s visible hand").replace('${player_name}', this.format_player_name(player_info));
         },
 
         // /////////////////////////////////////////////////
@@ -770,7 +774,6 @@ function (dojo, declare) {
                 'visibleHandsPublic',
                 'playCard',
                 'trickWin',
-                // 'endHand',
                 'newScores',
             ].forEach((n) => {
                 dojo.subscribe(n, this, `notif_${n}`);
@@ -958,15 +961,105 @@ function (dojo, declare) {
             this.notifqueue.setSynchronousDuration(0);
         },
 
-        notif_endHand: function(notif) {
-            // TODO: Adjust scores here or in newScores?
-        },
-
         notif_newScores: function(notif) {
             // Update players' scores
-            for (let player_id in notif.args.newScores) {
-                this.scoreCtrl[player_id].toValue(notif.args.newScores[player_id]);
+            for (let player_id in notif.args.player_points) {
+                this.scoreCtrl[player_id].incValue(notif.args.individual_scores[player_id]);
             }
+
+            // Show scores
+            let tableDlg = new ebg.popindialog();
+            tableDlg.create('tableWindow');
+            tableDlg.setTitle(notif.args.end_of_game ? _('End of Game') : _('End of Round'));
+
+            let parts = ['<div class="tableWindow">'];
+            // Show Devil's trick
+            parts.push('<div><div>', _("Devil's Trick"), ': ', _('${p} points').replace('${p}', notif.args.devil_points), '</div>');
+            parts.push('<div class="imp_devil_list">');
+            for (let card_id of notif.args.devil_cards) {
+                let spritePos = this.getSpriteXY(card_id);
+                let html = this.format_block('jstpl_card', {
+                    x: spritePos.x,
+                    y: spritePos.y,
+                });
+                parts.push(html);
+            }
+            parts.push('</div></div>');
+
+            parts.push('<table style="margin: 0 auto;">',
+                '<tr>',
+                '<th></th>'); // Player name
+            if (this.gamedatas.teams) {
+                parts.push(
+                    '<th>', '</th>', // Team name
+                    '<th>', _('Individual points'), '</th>',
+                    '<th>', _('Team points'), '</th>');
+            } else {
+                parts.push(
+                    '<th>', _('Round points'), '</th>');
+            }
+            parts.push(
+                '<th>', _('Total score'), '</th>',
+                '</tr>');
+
+            // Sort by teams, current player on top
+            let player_list = Object.keys(this.gamedatas.players);
+            if (this.gamedatas.teams) {
+                player_list.sort((a, b) => {
+                    if (a == this.player_id)
+                        return -1;
+                    else if (b == this.player_id)
+                        return 1;
+                    else if (this.gamedatas.teams[a] == this.gamedatas.teams[this.player_id])
+                        return -1;
+                    else if (this.gamedatas.teams[b] == this.gamedatas.teams[this.player_id])
+                        return 1;
+                    else {
+                        return this.gamedatas.teams[a] - this.gamedatas.teams[b];
+                    }
+                });
+            }
+
+            let skip_row = false;
+            for (const player_id of player_list) {
+                let team;
+                let player_info = this.gamedatas.players[player_id];
+                let player_points = notif.args.individual_scores[player_id];
+                parts.push('<tr>');
+                parts.push('<td>', this.format_player_name(player_info));
+                if (this.gamedatas.teams && !skip_row) {
+                    team = this.gamedatas.teams[player_id];
+                    parts.push(`<td rowspan=2><span class="imp_team_scores imp_team_${team}">`, _('Team'), ' ', this.teamLetters[team], '</span></td>')
+                }
+                parts.push('</td>');
+                parts.push('<td>', player_points, '</td>');
+                if (this.gamedatas.teams) {
+                    if (skip_row)
+                        skip_row = false;
+                    else {
+                        parts.push('<td rowspan=2>', notif.args.team_scores[team], '</td>');
+                        skip_row = true;
+                    }
+                }
+                parts.push('<td>', this.scoreCtrl[player_id].getValue(), '</td>');
+                parts.push('</tr>');
+            }
+
+            parts.push('</table>',
+                '<br/><br/><div style="text-align: center">',
+                '<a class="bgabutton bgabutton_blue" id="close_btn" href="#"><span>',
+                _('Close'),
+                '</span></a></div></div>');
+
+            tableDlg.setContent(parts.join(''));
+            if ($('close_btn')) {
+                dojo.connect($('close_btn'), 'onclick', this, function(ev) {
+                    ev.preventDefault();
+                    tableDlg.destroy();
+                });
+            }
+
+            tableDlg.show();
         },
    });
 });

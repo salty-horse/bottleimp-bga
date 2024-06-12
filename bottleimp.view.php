@@ -55,6 +55,7 @@ class view_bottleimp_bottleimp extends game_view {
                 'PLAYER_ID' => $player_id,
                 'PLAYER_NAME' => $players[$player_id]['player_name'],
                 'PLAYER_COLOR' => $players[$player_id]['player_color'],
+                'PLAYER_COLOR_BACK' => '',
             ]);
 
             if (count($players) == 2 && !$this->game->isSpectator() && $player_id != $current_player_id) {

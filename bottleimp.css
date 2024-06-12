@@ -138,11 +138,11 @@
 }
 
 #imp_pass_center.imp_hidden {
-	visibility: hidden;
+    visibility: hidden;
 }
 
 #imp_pass_center2.imp_hidden {
-	display: none;
+    display: none;
 }
 
 .imp_table_selected {
@@ -165,6 +165,10 @@
 
 .imp_team_label {
     display: none;
+}
+
+.imp_team_scores {
+    color: black;
 }
 
 .imp_team_1 {
@@ -213,6 +217,22 @@
     box-shadow: 1px 1px 1px 1px black;
     width: var(--imp-card-width);
     height: var(--imp-card-height);
+}
+
+.imp_devil_list {
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.imp_devil_list div {
+    display: flex;
+    width: 30px;
+    height: 90px;
+    background-image: url('img/cards.jpg');
+    border-radius: 6px 0 0 0;
+    box-shadow: 2px 2px 5px 3px #666;
 }
 
 #imp_myhands {

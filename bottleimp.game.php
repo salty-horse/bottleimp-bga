@@ -387,8 +387,6 @@ class BottleImp extends Table {
                 throw new BgaUserException('You must pass 3 cards');
         }
 
-        // TODO - support 2 players - check source of each card
-
         // In 5-player mode, the dealer doesn't pass to the center
         $pass_two = false;
         if ($player_count == 5 && $player_id == $this->getDealer()) {
@@ -753,21 +751,23 @@ class BottleImp extends Table {
 
     function stEndHand() {
         // Reveal devil's trick
-        // TODO: Sort cards for display?
-        $center_cards = $this->deck->getCardsInLocation('center');
+        $center_cards = $this->deck->getCardsInLocation('center', null, 'card_type_arg');
         $devil_points = 0;
         $devil_cards_display = [];
+        $devil_cards = [];
         foreach ($center_cards as $card) {
             $card['type_arg'] /= 10;
             $devil_points += $this->cards[$card['type_arg']]['points'];
+            $devil_cards[] = $card['id'];
             $suit_display = $this->getSuitLogName($card);
             $devil_cards_display[] = "{$card['type_arg']}$suit_display";
         }
-        $devil_cards = join(", ", $devil_cards_display);
+        sort($devil_cards);
+        $devil_cards_str = join(", ", $devil_cards_display);
 
 
         self::notifyAllPlayers('revealDevilsTrick', clienttranslate('Devil\'s trick had ${devil_cards}, worth ${points} points'), [
-            'devil_cards' => $devil_cards,
+            'devil_cards' => $devil_cards_str,
             'points' => $devil_points,
         ]);
 
@@ -796,7 +796,7 @@ class BottleImp extends Table {
                 }
                 $score_piles[$player_id]['points'] = -$points;
                 $individual_scores[$player_id] = -$points;
-                self::notifyAllPlayers('endHand', $lose_message, [
+                self::notifyAllPlayers('log', $lose_message, [
                     'player_id' => $player_id,
                     'player_name' => $players[$player_id]['player_name'],
                     'points_disp' => $points,
@@ -805,7 +805,7 @@ class BottleImp extends Table {
             } else {
                 $points = $score_piles[$player_id]['points'];
                 $individual_scores[$player_id] = $score_piles[$player_id]['points'];
-                self::notifyAllPlayers('endHand', clienttranslate('${player_name} collected ${points} points'), [
+                self::notifyAllPlayers('log', clienttranslate('${player_name} collected ${points} points'), [
                     'player_id' => $player_id,
                     'player_name' => $players[$player_id]['player_name'],
                     'points' => $points,
@@ -817,8 +817,8 @@ class BottleImp extends Table {
 
         // Calculate team scores
         $teams = $this->getTeams();
+        $team_scores = [];
         if ($teams) {
-            $team_scores = [];
             $player_team_scores = [];
             $score_object = $player_team_scores;
 
@@ -838,52 +838,21 @@ class BottleImp extends Table {
             self::DbQuery("UPDATE player SET player_score=player_score+$points WHERE player_id='$player_id'");
         }
 
-        $new_scores = self::getCollectionFromDb('SELECT player_id, player_score FROM player', true);
-        $flat_scores = array_values($new_scores);
-        self::notifyAllPlayers('newScores', '', ['newScores' => $new_scores]);
-
         // Check if this is the end of the game
         $end_of_game = false;
         if ($this->getGameStateValue('roundNumber') == count($players) * $this->getGameStateValue('roundsPerPlayer')) {
             $end_of_game = true;
         }
 
-        // Display a score table
-        $scoreTable = [];
-        $row = [''];
-        foreach ($players as $player_id => $player) {
-            $row[] = [
-                'str' => '${player_name}',
-                'args' => ['player_name' => $player['player_name']],
-                'type' => 'header'
-            ];
-        }
-        $scoreTable[] = $row;
-
-        $row = [clienttranslate('Round score')];
-        foreach ($players as $player_id => $player) {
-            $row[] = $score_object[$player_id];
-        }
-        $scoreTable[] = $row;
-
-        // Add separator before current total score
-        $row = [''];
-        foreach ($players as $player_id => $player) {
-            $row[] = '';
-        }
-        $scoreTable[] = $row;
-
-        $row = [$end_of_game ? clienttranslate('Final Score') : clienttranslate('Cumulative score')];
-        foreach ($players as $player_id => $player) {
-            $row[] = $new_scores[$player_id];
-        }
-        $scoreTable[] = $row;
-
-        $this->notifyAllPlayers('tableWindow', '', [
-            'id' => 'scoreView',
-            'title' => $end_of_game ? clienttranslate('Final Score') : clienttranslate('End of Round Score'),
-            'table' => $scoreTable,
-            'closing' => clienttranslate('Continue')
+        $new_scores = self::getCollectionFromDb('SELECT player_id, player_score FROM player', true);
+        $flat_scores = array_values($new_scores);
+        self::notifyAllPlayers('newScores', '', [
+            'individual_scores' => $individual_scores,
+            'team_scores' => $team_scores,
+            'player_points' => $score_object,
+            'devil_cards' => $devil_cards,
+            'devil_points' => $devil_points,
+            'end_of_game' => $end_of_game,
         ]);
 
         if ($end_of_game) {
@@ -900,7 +869,6 @@ class BottleImp extends Table {
         $this->gamestate->changeActivePlayer($new_first_player);
         $this->gamestate->nextState('nextHand');
     }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie

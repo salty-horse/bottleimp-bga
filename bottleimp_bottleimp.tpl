@@ -32,7 +32,7 @@
 
 <!-- BEGIN player -->
 <div id="imp_playertable_{PLAYER_ID}" class="imp_playertable whiteblock">
-    <div class="imp_playertablename" style="color:#{PLAYER_COLOR}">{PLAYER_NAME}</div>
+	<div class="imp_playertablename" style="color:#{PLAYER_COLOR};{PLAYER_COLOR_BACK}">{PLAYER_NAME}</div>
     <div id="imp_playertable_team_{PLAYER_ID}" class="imp_team_label">Team A</div>
     <div class="imp_playertablecard" id="imp_playertablecard_{PLAYER_ID}"></div>
     <div class="imp_playertablecard imp_second_card_slot" id="imp_playertablecard_{PLAYER_ID}_2"></div>
@@ -78,10 +78,12 @@ var jstpl_player_hand_size = '<div class="imp_hand_size">\
 </div>';
 
 var jstpl_cardontable = '<div class="imp_cardontable" id="${id}" style="background-position:-${x}px -${y}px"></div>';
+var jstpl_card = '<div style="background-position:-${x}px -${y}px"></div>';
 
 var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle"><span>${price}</span></div>';
 
 var jstpl_player_name = '<span style="color:#${color}">${name}</span>';
+var jstpl_player_name_color_back = '<span style="color:#${color}; background-color:#${color_back};">${name}</span>';
 
 </script>
 
