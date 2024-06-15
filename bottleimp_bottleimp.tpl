@@ -77,8 +77,8 @@ var jstpl_player_hand_size = '<div class="imp_hand_size">\
     <span class="fa fa-hand-paper-o"/>\
 </div>';
 
-var jstpl_cardontable = '<div class="imp_cardontable" id="${id}" style="background-position:-${x}px -${y}px"></div>';
-var jstpl_card = '<div style="background-position:-${x}px -${y}px"></div>';
+var jstpl_cardontable = '<div class="imp_cardontable ${largeprint}" id="${id}" style="background-position:-${x}px -${y}px"></div>';
+var jstpl_card = '<div class="${largeprint}" style="background-position:-${x}px -${y}px"></div>';
 
 var jstpl_bottle = '<div id="imp_bottle_${id}" class="imp_bottle"><span>${price}</span></div>';
 

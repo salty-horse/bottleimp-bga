@@ -216,6 +216,8 @@ function (dojo, declare) {
                 this.putCardOnTable(player_id, card.id, card.location.slice(-1) == '2' ? 2 : 1);
             }
 
+            this.largePrint = (this.getGameUserPreference(100) == 2);
+
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();
 
@@ -451,6 +453,7 @@ function (dojo, declare) {
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
+                    largeprint: this.largePrint ? 'imp_largeprint' : '',
                     id: `imp_cardontable_${player_id}${suffix}`,
                 }), `${container_id}${suffix}`);
             placedCard.dataset.card_id = card_id;
@@ -496,6 +499,7 @@ function (dojo, declare) {
                 this.format_block('jstpl_cardontable', {
                     x: spritePos.x,
                     y: spritePos.y,
+                    largeprint: this.largePrint ? 'imp_largeprint' : '',
                     id: elem_id ?? `imp_passcardontable_${card_id}`,
                 }), `imp_passcard_${pass_type}`);
             placedCard.style.zIndex = 100;
@@ -567,6 +571,7 @@ function (dojo, declare) {
                     this.format_block('jstpl_cardontable', {
                         x: 0,
                         y: 0,
+                        largeprint: '',
                         id: `imp_passcardontable_${pass_type}`,
                     }), `imp_passcard_${pass_type}`);
                 if (!this.instantaneousMode) {
@@ -654,8 +659,17 @@ function (dojo, declare) {
             stock.create(this, container, this.cardWidth, this.cardHeight);
             stock.image_items_per_row = 11;
 
+            let cards_url;
+            let card_style = this.getGameUserPreference(100);
+            if (card_style == 1) {
+                cards_url = 'img/cards.jpg';
+            } else if (card_style == 2) {
+                cards_url = 'img/cards_large_print.jpg';
+            }
+
             for (let card of Object.values(this.gamedatas.cards)) {
                 stock.addItemType(card.rank, card.rank, g_gamethemeurl+'img/cards.jpg', this.rankToSpritesheet[card.rank]);
+                stock.addItemType(card.rank, card.rank, g_gamethemeurl + cards_url, this.rankToSpritesheet[card.rank]);
             }
 
             if (clickable) {
@@ -981,6 +995,7 @@ function (dojo, declare) {
                 let html = this.format_block('jstpl_card', {
                     x: spritePos.x,
                     y: spritePos.y,
+                    largeprint: this.largePrint ? 'imp_largeprint' : '',
                 });
                 parts.push(html);
             }
