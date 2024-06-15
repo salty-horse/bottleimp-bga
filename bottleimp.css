@@ -188,8 +188,8 @@
     display: flex;
     flex-wrap: wrap-reverse;
     position: absolute;
-    bottom: 0;
-    right: 0;
+    bottom: -10px;
+    right: -20px;
     width: var(--imp-bottle-width);
     height: calc(2*var(--imp-bottle-height));
 }
