@@ -151,10 +151,8 @@ function (dojo, declare) {
                         this.playersPassedCards.push(this.opponent_id);
                     }
                 } else {
-                    // For 5 players, this is set inside onEnteringState
-                    if (this.playerCount != 5) {
-                        this.passKeys = ['next', 'center', 'prev'];
-                    }
+                    // For 5 players, this is changed inside onEnteringState for the dealer
+                    this.passKeys = ['next', 'center', 'prev'];
                     this.passPlayers[playerorder[(playerPos + 1) % this.playerCount]] = ['next'];
                     this.passPlayers[playerorder[(playerPos == 0 ? this.playerCount : playerPos) - 1]] = ['prev'];
 
@@ -806,9 +804,6 @@ function (dojo, declare) {
             }
             for (let handSize of Object.values(this.handSizes)) {
                 handSize.setValue(notif.args.hand_size);
-            }
-            if (this.playerCount == 5) {
-                this.handSizes[notif.args.dealer].setValue(notif.args.hand_size - 1);
             }
             this.gamedatas.dealer = notif.args.dealer;
             this.markDealer();

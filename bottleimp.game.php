@@ -813,14 +813,14 @@ class BottleImp extends Table {
             }
         }
 
-        $score_object = $individual_scores;
+        $score_object = &$individual_scores;
 
         // Calculate team scores
         $teams = $this->getTeams();
         $team_scores = [];
         if ($teams) {
             $player_team_scores = [];
-            $score_object = $player_team_scores;
+            $score_object = &$player_team_scores;
 
             foreach ($teams as $player_id => $team) {
                 if (!array_key_exists($team, $team_scores)) {
