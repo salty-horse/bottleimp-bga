@@ -36,11 +36,12 @@ class BottleImp extends Table {
             'ledSuit' => 11,
             'firstPlayer' => 12,
             'numberOfBottles' => 13,
+            'cardsPlayed' => 14,
+            'cardsToPlay' => 15,
             'roundsPerPlayer' => 100,
             '4playerMode' => 104,
             '5playerMode' => 105,
             '6playerMode' => 106,
-            // 'teamMode' => 102, # TODO options for team modes when playing with 1 bottle
         ]);
 
         $this->deck = self::getNew('module.common.deck');
@@ -88,6 +89,7 @@ class BottleImp extends Table {
         // Init global values with their initial values
 
         self::setGameStateInitialValue('roundNumber', 0);
+        self::setGameStateInitialValue('cardsPlayed', 0);
 
         $number_of_bottles = 1;
         $player_count = count($players);
@@ -119,6 +121,20 @@ class BottleImp extends Table {
             $sql .= ', (2, "", 19)';
         }
         self::DbQuery($sql);
+
+        $player_count = count($players);
+        if ($player_count == 2) {
+            $cards_per_hand = 17 * 2;
+        } else if ($player_count == 3)  {
+            $cards_per_hand = 11 * 3;
+        } else if ($player_count == 4)  {
+            $cards_per_hand = 8 * 4;
+        } else if ($player_count == 5) {
+            $cards_per_hand = 10 * 5;
+        } else {
+            $cards_per_hand = 8 * 6;
+        }
+        self::setGameStateInitialValue('cardsToPlay', count($players) * $this->getGameStateValue('roundsPerPlayer') * $cards_per_hand);
 
         // Activate first player (which is in general a good idea :))
         $this->activeNextPlayer();
@@ -201,11 +217,10 @@ class BottleImp extends Table {
         (see states.inc.php)
     */
     function getGameProgression() {
-        // TODO
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
-        return 1;
+        return floor($this->getGameStateValue('cardsPlayed') * 100 / $this->getGameStateValue('cardsToPlay'));
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -499,6 +514,7 @@ class BottleImp extends Table {
             'suit_id' => $current_card['type'],
             'suit' => $this->getSuitLogName($current_card),
         ]);
+        $this->incGameStateValue('cardsPlayed', 1);
     }
 
     //////////////////////////////////////////////////////////////////////////////

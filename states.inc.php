@@ -80,7 +80,6 @@ $machinestates = [
         'description' => '',
         'type' => 'game',
         'action' => 'stNewHand',
-        'updateGameProgression' => true,
         'transitions' => ['' => STATE_PASS_CARDS]
     ],
 
@@ -138,6 +137,7 @@ $machinestates = [
         'description' => '',
         'type' => 'game',
         'action' => 'stNextPlayer',
+        'updateGameProgression' => true,
         'transitions' => [
             'nextPlayer' => STATE_PLAYER_TURN_TRY_AUTOPLAY,
             'nextTrick' => STATE_NEW_TRICK,
