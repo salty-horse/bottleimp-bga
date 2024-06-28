@@ -32,7 +32,7 @@
 
 <!-- BEGIN player -->
 <div id="imp_playertable_{PLAYER_ID}" class="imp_playertable whiteblock">
-	<div class="imp_playertablename" style="color:#{PLAYER_COLOR};{PLAYER_COLOR_BACK}">{PLAYER_NAME}</div>
+    <div class="imp_playertablename" style="color:#{PLAYER_COLOR};{PLAYER_COLOR_BACK}">{PLAYER_NAME}</div>
     <div id="imp_playertable_team_{PLAYER_ID}" class="imp_team_label">Team A</div>
     <div class="imp_playertablecard" id="imp_playertablecard_{PLAYER_ID}"></div>
     <div class="imp_playertablecard imp_second_card_slot" id="imp_playertablecard_{PLAYER_ID}_2"></div>
@@ -55,8 +55,10 @@
 
 </div>
 
+<div id="imp_player_aid" class="whiteblock"></div>
 <div id="imp_my_hands">
 <div id="imp_myhand_wrap" class="whiteblock">
+    <div style="float: right;"><input id="imp_player_aid_toggle" type="checkbox" checked></input><label for="imp_player_aid_toggle">{SHOW_PLAYER_AID}</label></div>
     <h3>{YOUR_HAND}</h3>
     <div id="imp_myhand">
     </div>

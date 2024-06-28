@@ -79,6 +79,7 @@ function (dojo, declare) {
             };
 
             this.playerCount = gamedatas.playerorder.length;
+            this.cardAmount = (this.playerCount <= 4) ? 'regular' : 'large';
 
             // The player order array mixes strings and numbers
             let playerorder = gamedatas.playerorder.map(x => parseInt(x));
@@ -99,8 +100,6 @@ function (dojo, declare) {
                 }
             }
 
-            this.playerCount = gamedatas.playerorder.length;
-
             // Info box
             document.getElementById('imp_round_number').textContent = this.gamedatas.roundNumber;
             document.getElementById('imp_total_rounds').textContent = this.gamedatas.totalRounds;
@@ -109,6 +108,7 @@ function (dojo, declare) {
             }
             this.initBottles();
             this.initTeams();
+            this.initPlayerAid();
 
             // Init pass boxes
             document.getElementById('imp_passCards').style.display = 'none';
@@ -710,6 +710,56 @@ function (dojo, declare) {
                 e.classList.add(`imp_team_${team}`);
                 e.dataset.team = team;
             }
+        },
+
+        initPlayerAid: function() {
+            let container = document.getElementById('imp_player_aid');
+            for (let i = 1; i <= 37; i++) {
+                let new_elem = this.createPlayerAidCell(i);
+                container.appendChild(new_elem);
+                if (i % 2 == 0 && this.cardAmount == 'large') {
+                    let new_elem = this.createPlayerAidCell(i + 0.5);
+                    container.appendChild(new_elem);
+                }
+            }
+
+            document.getElementById('imp_player_aid_toggle').addEventListener('change', () => {
+                container.classList.toggle('closed');
+            });
+        },
+
+        createPlayerAidCell: function(value) {
+            let colorblind = (this.getGameUserPreference(100) == 3);
+            let new_elem = document.createElement('div');
+            let new_elem_text = document.createElement('div');
+            let new_elem_bg = document.createElement('div');
+            new_elem.appendChild(new_elem_bg);
+            new_elem.appendChild(new_elem_text);
+            new_elem_text.classList.add('imp_player_aid_text');
+            new_elem_bg.classList.add('imp_player_aid_bg');
+            if (colorblind) {
+                new_elem_bg.classList.add('imp_player_aid_colorblind');
+            }
+            new_elem_text.textContent = value;
+            if (Number.isInteger(value)) {
+                new_elem_text.textContent = value;
+            } else {
+                new_elem_text.textContent = Math.floor(value);
+                let span = document.createElement('span');
+                span.textContent = '.5';
+                new_elem_text.appendChild(span);
+            }
+            if (value == 19) {
+                new_elem_bg.style.backgroundColor = '#aaaaaa';
+            } else {
+                let suit = this.gamedatas.cards[value].suit;
+                if (colorblind) {
+                    new_elem_bg.classList.add(`imp_suit_icon_${suit}`);
+                } else {
+                    new_elem_bg.classList.add(`imp_suit_color_${suit}`);
+                }
+            }
+            return new_elem;
         },
 
         markDealer: function() {
