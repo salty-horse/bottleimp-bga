@@ -663,6 +663,8 @@ function (dojo, declare) {
                 cards_url = 'img/cards.jpg';
             } else if (card_style == 2) {
                 cards_url = 'img/cards_large_print.jpg';
+            } else {
+                cards_url = 'img/cards.jpg';
             }
 
             for (let card of Object.values(this.gamedatas.cards)) {
