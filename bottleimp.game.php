@@ -220,6 +220,9 @@ class BottleImp extends Table {
         if ($this->gamestate->state()['name'] == 'gameEnd') {
             return 100;
         }
+        if ($this->getGameStateValue('cardsToPlay') == 0) {
+            return 0;
+        }
         return floor($this->getGameStateValue('cardsPlayed') * 100 / $this->getGameStateValue('cardsToPlay'));
     }
 
