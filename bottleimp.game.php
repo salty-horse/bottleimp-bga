@@ -462,7 +462,10 @@ class BottleImp extends Table {
             $notif_message = clienttranslate('You passed ${card_next} to ${player_name1}, ${card_prev} to ${player_name2}, and ${card_center} to the Devil\'s Trick');
             if ($player_count == 2) {
                 $notif_message = clienttranslate('You passed ${card_next} to the visible hand, ${card_prev} to the hidden hand, and ${cards_center} to the Devil\'s Trick');
-                $pass_notify_args['cards_center'] = implode(', ', array_slice($passed_cards, 2));
+                $pass_notify_args['cards_center'] = implode(', ', [
+                    $cards_in_hand[$passed_cards[2]]['type_arg']/10,
+                    $cards_in_hand[$passed_cards[3]]['type_arg']/10,
+                ]);
             } else {
                 $pass_notify_args['card_center'] = $cards_in_hand[$passed_cards[2]]['type_arg']/10;
             }
