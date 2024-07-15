@@ -13,7 +13,7 @@
  *
  */
 
-/* global define, ebg, _, $, g_gamethemeurl */
+/* global define, ebg, _, $, g_gamethemeurl, g_archive_mode */
 /* eslint no-unused-vars: ["error", {args: "none"}] */
 
 'use strict';
@@ -516,16 +516,9 @@ function (dojo, declare) {
 
             this.passCards[pass_type] = card_id;
 
-            // Remove card from hand and move to table
+            this.animateNewPassCard(card_id, pass_type);
+
             let elem_id = `imp_passcardontable_${card_id}`;
-            this.putPassCardOnTable(card_id, pass_type);
-            this.placeOnObject(elem_id, 'imp_myhand_item_' + card_id);
-            let anim = this.slideToObject(elem_id, 'imp_passcard_' + pass_type);
-            dojo.connect(anim, 'onEnd', (node) => {
-                node.style.zIndex = 1;
-            });
-            anim.play()
-            this.playerHand.removeFromStockById(card_id);
             $(elem_id).onclick = (e) => {
                 // Will also onclick the box, which marks it as active. Call e.stopPropagation() to prevent.
                 dojo.destroy(e.target);
@@ -546,6 +539,19 @@ function (dojo, declare) {
                     break;
                 }
             }
+        },
+
+        animateNewPassCard: function(card_id, pass_type) {
+            // Remove card from hand and move to table
+            let elem_id = `imp_passcardontable_${card_id}`;
+            this.putPassCardOnTable(card_id, pass_type);
+            this.placeOnObject(elem_id, 'imp_myhand_item_' + card_id);
+            let anim = this.slideToObject(elem_id, 'imp_passcard_' + pass_type);
+            dojo.connect(anim, 'onEnd', (node) => {
+                node.style.zIndex = 1;
+            });
+            anim.play()
+            this.playerHand.removeFromStockById(card_id);
         },
 
         showCenterPassBox: function(show) {
@@ -878,6 +884,24 @@ function (dojo, declare) {
 
         notif_passCardsPrivate: async function(notif) {
             this.unmarkPlayableCards();
+
+            // Animate cards from hand to slots
+            if (typeof g_replayFrom != 'undefined' || g_archive_mode) {
+                let pass_types;
+                if (notif.args.cards.length == 2) {
+                    pass_types = ['next', 'prev'];
+                } else if (notif.args.cards.length == 3) {
+                    pass_types = ['next', 'prev', 'center'];
+                } else {
+                    pass_types = ['next', 'prev', 'center', 'center2'];
+                }
+                for (let i = 0; i < notif.args.cards.length; i++) {
+                    this.animateNewPassCard(notif.args.cards[i], pass_types[i]);
+                }
+
+                if (!this.instantaneousMode)
+                    await new Promise(r => setTimeout(r, 2000));
+            }
 
             // Fade out passed cards
             for (let pos of this.passKeys) {
