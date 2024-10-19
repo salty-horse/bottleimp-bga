@@ -38,10 +38,15 @@ class BottleImp extends Table {
             'numberOfBottles' => 13,
             'cardsPlayed' => 14,
             'cardsToPlay' => 15,
-            'roundsPerPlayer' => 100,
+            'roundsPerPlayer' => 100, // DEPRECATED
             '4playerMode' => 104,
             '5playerMode' => 105,
             '6playerMode' => 106,
+            '2playerRounds' => 112,
+            '3playerRounds' => 113,
+            '4playerRounds' => 114,
+            '5playerRounds' => 115,
+            '6playerRounds' => 116,
         ]);
 
         $this->deck = self::getNew('module.common.deck');
@@ -134,7 +139,16 @@ class BottleImp extends Table {
         } else {
             $cards_per_hand = 8 * 6;
         }
-        self::setGameStateInitialValue('cardsToPlay', count($players) * $this->getGameStateValue('roundsPerPlayer') * $cards_per_hand);
+
+        $roundsNumber = $this->getGameStateValue(count($players) . 'playerRounds');
+        if ($roundsNumber) {
+            // New setting
+            self::setGameStateInitialValue('cardsToPlay', $roundsNumber * $cards_per_hand);
+            $this->setGameStateValue('roundsPerPlayer', $roundsNumber / count($players));
+        } else {
+            // Old setting
+            self::setGameStateInitialValue('cardsToPlay', count($players) * $this->getGameStateValue('roundsPerPlayer') * $cards_per_hand);
+        }
 
         // Activate first player (which is in general a good idea :))
         $this->activeNextPlayer();

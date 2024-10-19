@@ -1,15 +1,112 @@
 {
-  "100": {
-    "name": "Rounds per player",
+  "112": {
+    "name": "Rounds (2 players)",
     "values": {
-      "2": {
-        "name": "Standard game (2 rounds per player)"
+      "4": {
+        "name": "Short game (4 rounds)"
       },
-      "3": {
-        "name": "Long game (3 rounds per player)"
+      "6": {
+        "name": "Standard game (6 rounds)"
+      },
+      "8": {
+        "name": "Long game (8 rounds)"
       }
     },
-    "default": 2
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          2
+        ]
+      }
+    ],
+    "default": 6
+  },
+  "113": {
+    "name": "Rounds (3 players)",
+    "values": {
+      "6": {
+        "name": "Short game (6 rounds)"
+      },
+      "9": {
+        "name": "Standard game (9 rounds)"
+      },
+      "12": {
+        "name": "Long game (12 rounds)"
+      }
+    },
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          3
+        ]
+      }
+    ],
+    "default": 9
+  },
+  "114": {
+    "name": "Rounds (4 players)",
+    "values": {
+      "4": {
+        "name": "Short game (4 rounds)"
+      },
+      "8": {
+        "name": "Standard game (8 rounds)"
+      },
+      "12": {
+        "name": "Long game (12 rounds)"
+      }
+    },
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          4
+        ]
+      }
+    ],
+    "default": 8
+  },
+  "115": {
+    "name": "Rounds (5 players)",
+    "values": {
+      "5": {
+        "name": "Standard game (5 rounds)"
+      },
+      "10": {
+        "name": "Long game (10 rounds)"
+      }
+    },
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          5
+        ]
+      }
+    ],
+    "default": 5
+  },
+  "116": {
+    "name": "Rounds (6 players)",
+    "values": {
+      "6": {
+        "name": "Standard game (6 rounds)"
+      },
+      "12": {
+        "name": "Long game (12 rounds)"
+      }
+    },
+    "displaycondition": [
+      {
+        "type": "minplayers",
+        "value": [
+          6
+        ]
+      }
+    ],
+    "default": 6
   },
   "104": {
     "name": "4-player game mode",
